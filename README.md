@@ -18,8 +18,8 @@ Ginger Delmas & Jeffery Durand
 
 **Datasets à checker**
 
-- OK [outdoor] : Semantic3D : http://semantic3d.net/
-- OK [indoors] : SceneNet RGBD : https://robotvault.bitbucket.io/scenenet-rgbd.html -> https://github.com/jmccormac/pySceneNetRGBD pour récupérer les labels sémantiques de NYUv2
-- OK [in & out door] : S3DIS : http://buildingparser.stanford.edu/dataset.html
+- [outdoor] : Semantic3D : http://semantic3d.net/
+- [indoors] : SceneNet RGBD : https://robotvault.bitbucket.io/scenenet-rgbd.html -> https://github.com/jmccormac/pySceneNetRGBD pour récupérer les labels sémantiques de NYUv2
+- [in & out door] : S3DIS : http://buildingparser.stanford.edu/dataset.html
 - SemanticKITTI [outdoor] : http://semantic-kitti.org/
 - Paris-Lille-3D [outdoor] : http://npm3d.fr/paris-lille-3d
