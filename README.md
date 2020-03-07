@@ -26,9 +26,3 @@ Ginger Delmas & Jeffery Durand
 - SceneNN : http://scenenn.net/
 - SemanticKITTI : http://semantic-kitti.org/
 - Paris-Lille-3D : http://npm3d.fr/paris-lille-3d
-- 3DMatch : http://3dmatch.cs.princeton.edu/
-- Stanford Scan repository: https://graphics.stanford.edu/data/3Dscanrep/
-- ModelNet : http://modelnet.cs.princeton.edu/
-
-
-Modification à la con
