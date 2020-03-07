@@ -26,3 +26,5 @@ Ginger Delmas & Jeffery Durand
 - SceneNN : http://scenenn.net/
 - SemanticKITTI : http://semantic-kitti.org/
 - Paris-Lille-3D : http://npm3d.fr/paris-lille-3d
+- Oakland 3D: https://www.cs.cmu.edu/~vmr/datasets/oakland_3d/cvpr09/doc/
+- NYU (indoor): https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
