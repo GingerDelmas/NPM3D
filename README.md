@@ -29,3 +29,6 @@ Ginger Delmas & Jeffery Durand
 - 3DMatch : http://3dmatch.cs.princeton.edu/
 - Stanford Scan repository: https://graphics.stanford.edu/data/3Dscanrep/
 - ModelNet : http://modelnet.cs.princeton.edu/
+
+
+Modification à la con
