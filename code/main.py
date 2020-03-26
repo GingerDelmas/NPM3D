@@ -20,7 +20,9 @@ from sklearn.neighbors import KDTree
 ################################################################################
 # GLOBAL VARIABLES
 ################################################################################
-name_of_class_label = "scalar_class" # it should be "class", but on mini data files
+
+# it should be "class", but on mini data files
+name_of_class_label = "scalar_class"
 
 ################################################################################
 # CLASS DEFINITIONS
@@ -64,12 +66,22 @@ class saveable:
             return False
 
 
+# *******************************CLASS SEPARATION***********************************************
+
+
 class cloud(saveable):
     """
         Basic class for a point cloud. Takes:
             - ply_path : the path to the .ply file containing the cloud
             - save_dir and save_file : see "saveable" class
             - include_labels : boolean indicating if we should (or can) take labels
+
+        Attributes:
+            - label_names : [hard coded] name of the different admitted labels
+            - ply_path : (as input)
+            - points : matrix of size (number of points , 3) containing the coordinates of each point
+            - tree : KDTree based on "points"
+
     """
 
     def __init__(self, ply_path, save_dir, save_file):
@@ -99,12 +111,18 @@ class cloud(saveable):
         self.tree = KDTree(self.points)
 
 
+# *******************************CLASS SEPARATION***********************************************
+
+
 class train_cloud(cloud):
     """
-        Basic class for a training point cloud. Takes:
+        Basic class for a training point cloud, deriving from the cloud class. Takes:
             - ply_path, save_dir, and save_file: see "cloud" class
             - load_if_possible : if True, loads the previously saved version if possible
             - num_points_per_label : number of points to randomly sample per labeled class
+
+        Attributes :
+            - samples_indices : indices (in the cloud) of the randomly sampled points
     """
 
     def __init__(self, ply_path, save_dir, save_file, load_if_possible=True,
@@ -151,6 +169,9 @@ class train_cloud(cloud):
         return self.samples_indices
 
 
+# *******************************CLASS SEPARATION***********************************************
+
+
 class test_cloud(cloud):
     """ Basic class for a test point cloud """
 
@@ -163,6 +184,9 @@ class test_cloud(cloud):
         if not self.load(load_if_possible):
             # skip labels since this is the test set
             self.fetch_points(include_labels=False)
+
+
+# *******************************CLASS SEPARATION***********************************************
 
 
 class neighborhood:
@@ -184,9 +208,14 @@ class neighborhood:
         return self.cloud.points[self.indices]
 
 
+# *******************************CLASS SEPARATION***********************************************
+
+
 class neighborhood_finder(saveable):
     """
-        Given a cloud and query indices, find a neighborhood.
+        Find the neighborhood size of each point denoted by query_indices in a cloud.
+        Use case : query_indices represent the set of points sampled from the cloud
+        on which computing the features and all.
 
         In:
             - cloud : the relevant 'cloud' class
@@ -194,13 +223,32 @@ class neighborhood_finder(saveable):
             - save_dir and save_file : see "saveable" class
 
         The different optimal neighbourhood finder methods which are:
+            - k_dummy()
             - k_critical_curvature()
             - k_min_shannon_entropy()
             - k_min_eigenentopy()
         should return:
 
         Out:
-            - neighborhoods : a list of length len(query_indices) of 'neighborhood' classes
+            - neighborhoods_size : array of size len(query_indices), containing the best k value for each query points.
+                (dtype : uint8, to save memory (this assume a point does not have more than 255 neighbors))
+            - eigenvalues : shape (len(query_indices), 3)
+                            contains l1, l2, l3 for every point of query_indices
+                            and the right value of "k"
+            - normals : shape (len(query_indices), 3)
+                        contains normals coordinates for every point of query_indices
+                        and the right value of "k"
+
+        Attributes:
+            - cloud (input)
+            - query_indices (input)
+            - k_min, k_max (input)
+            - eigenvalues_tmp : shape (len(query_indices), k_max - k_min + 1, 3)
+                                contains l1, l2, l3 for every point of query_indices
+                                and k between k_min and k_max
+            - normals_tmp : shape (len(query_indices), k_max - k_min + 1, 3),
+                            contains the normal coordinates for every point of query_indices
+                            and k between k_min and k_max
     """
 
     def __init__(self, cloud, query_indices, save_dir, save_file, k_min=10, k_max=100):
@@ -215,10 +263,10 @@ class neighborhood_finder(saveable):
         self.k_max = k_max
 
         # calculate all needed data
-        self.eigenvalues, self.normals = self.compute_over_k_range(k_min, k_max)
+        self.eigenvalues_tmp, self.normals_tmp = self.compute_over_k_range()
 
 
-    def compute_over_k_range(self, k_min, k_max):
+    def compute_over_k_range(self):
         """
             Loop through all considered k values and store needed data:
                 - eigenvectors of the structure tensor l1, l2, l3
@@ -226,20 +274,18 @@ class neighborhood_finder(saveable):
 
             Vectorized by querying the knn for all query_indices at a given k
 
-            Out: both outputs have shape (len(query_indices), k_max - k_min, 3)
+            Out: both outputs have shape (len(query_indices), k_max - k_min + 1, 3)
                 - eigenvalues : np array storing l1, l2, l3 for every value of query_indices and k,
                 - normals : np array storing the normal vector found for every value of query_indices and k
         """
 
         # empty containers for the output
-        eigenvalues = np.empty((len(self.query_indices), self.k_max - self.k_min, 3))
-        normals = np.empty((len(self.query_indices), self.k_max - self.k_min, 3))
+        eigenvalues = np.empty((len(self.query_indices), self.k_max - self.k_min + 1, 3))
+        normals = np.empty((len(self.query_indices), self.k_max - self.k_min + 1, 3))
 
-        for k in range(self.k_min, self.k_max):
+        for k in range(self.k_min, self.k_max+1): # this includes calculus for k = k_max
             knns = self.cloud.tree.query(self.query_indices, k, return_distance=False)
-
-            # TO IMPLEMENT
-            # implement a call to local_PCA to get the eigenvalues, normals, etc
+            eigenvalues[:,k,:], normals[:,k,:] = local_PCA(knns)
 
         return eigenvalues, normals
 
@@ -253,48 +299,81 @@ class neighborhood_finder(saveable):
                 - normals : np array storing the normal vector found for every value of query_indices
         """
         # empty containers for the output
-        eigenvalues = np.empty((len(self.query_indices), 3))
-        normals = np.empty((len(self.query_indices), 3))
+        eigenvalues = np.zeros((len(self.query_indices), 3))
+        normals = np.zeros((len(self.query_indices), 3))
 
-        # TO IMPLEMENT
+        # define useful function here
+        vec2mat = lambda v : np.outer(v,v)
+
+        for q in range(len(self.query_indices)):
+
+            pts = self.cloud.points[knns[q]]
+
+            centroid = np.mean(pts, axis=0)
+
+            # Compute the covariance matrix
+            cov = np.apply_along_axis(vec2mat, 1, pts - centroid)
+            cov = sum(cov)/len(cov)
+
+            # Compute the eigenvalues and eigenvectors
+            eigenvalues[q], eigenvector = np.linalg.eigh(cov)
+            normals[q] = eigenvector[:,0]
 
         return eigenvalues, normals
 
+    def k_dummy():
+        """
+        Returns an array full of a unic k value.
+        """
+        neighborhoods_size = np.ones(len(query_indices)).dtype("uint8")*self.k_max
+        eigenvalues = self.eigenvalues_tmp[:,0,:]
+        normals = self.normals_tmp[:,0,:]
 
-    def k_critical_curvature():
+        return neighborhoods_size, eigenvalues, normals
+
+    def k_critical_curvature(): # TODO
         """
             k maximizing the change in curvature C = l3 / (l1 + l2 + l3)
             where li is the ith biggest eigenvalue of the structure tensor
         """
 
         # TO IMPLEMENT
-        neighborhoods = []
+        neighborhoods_size = np.ones(len(query_points)).dtype("uint8")
+        eigenvalues = np.zeros((len(self.query_indices), 3))
+        normals = np.zeros((len(self.query_indices), 3))
 
-        return neighborhoods
+        return neighborhoods_size, eigenvalues, normals
 
 
-    def k_min_shannon_entropy():
+    def k_min_shannon_entropy(): # TODO
         """
             k minimizing the entropy Edim = - L*ln(L) - P*ln(P) - S*ln(S)
             where L, P and S are the linearity, planarity and sphericity
         """
 
         # TO IMPLEMENT
-        neighborhoods =[]
+        neighborhoods_size = np.ones(len(query_points)).dtype("uint8")
+        eigenvalues = np.zeros((len(self.query_indices), 3))
+        normals = np.zeros((len(self.query_indices), 3))
 
-        return neighborhoods
+        return neighborhoods_size, eigenvalues, normals
 
 
-    def k_min_eigenentopy():
+    def k_min_eigenentopy(): # TODO
         """
             k minimizing the entropy El = - e1*ln(e1) - e2*ln(e2) - e2*ln(e2)
             where ei is the normalized ith biggest eigenvalue of the structure tensor
         """
 
         # TO IMPLEMENT
-        neighborhoods = []
+        neighborhoods_size = np.ones(len(query_points)).dtype("uint8")
+        eigenvalues = np.zeros((len(self.query_indices), 3))
+        normals = np.zeros((len(self.query_indices), 3))
 
-        return neighborhoods
+        return neighborhoods_size, eigenvalues, normals
+
+
+# *******************************CLASS SEPARATION***********************************************
 
 
 class features_finder(saveable):
@@ -382,10 +461,16 @@ class features_finder(saveable):
         pass
 
 
+# *******************************CLASS SEPARATION***********************************************
+
+
 class classifier:
     """ container for the different classifiers we want to test """
     pass
 
+################################################################################
+# MAIN
+################################################################################
 
 if __name__ == '__main__':
 
