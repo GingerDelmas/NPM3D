@@ -28,6 +28,11 @@ class saveable:
         self.save_path = save_dir + '/' + save_file
     
     
+    # TO IMPLEMENT
+    # enable save() without a given file name, instead using some hash of the 
+    # initialization variables
+        
+    
     def save(self, save_path=None):
         # save the file at the default or custom path
         if save_path is None: 
@@ -89,7 +94,7 @@ class train_cloud(cloud):
         Basic class for a training point cloud. Takes:
             - ply_path, save_dir, and save_file: see "cloud" class
             - load_if_possible : if True, loads the previously saved version if possible
-            - num_points_per_label : number of points to randomly sample per labeled class
+            - num_points_per_label : number of points to randomly sample per labeled class            
     """
     
     def __init__(self, ply_path, save_dir, save_file, load_if_possible=True,
@@ -151,7 +156,12 @@ class test_cloud(cloud):
     
         
 class neighborhood:
-    """ general class for a point's neighborhood """
+    """ 
+        Container for a point's neighborhood.
+        
+        Note that since the normal and eigenvalues (of the structure tensor)
+        were calculated to find the neighborhood, these are also stored.
+    """
     
     def __init(self, cloud, indices, normal, eigenvalues):
         self.indices = indices
@@ -173,15 +183,17 @@ class neighborhood_finder(saveable):
             - query_indices : indices of the points in the cloud of which we want neighborhoods
             - save_dir and save_file : see "saveable" class
         
-        The different optimal neighbourhood finders which are
-        k_critical_curvature(), k_min_shannon_entropy(), and k_min_eigenentopy()
+        The different optimal neighbourhood finder methods which are:
+            - k_critical_curvature()
+            - k_min_shannon_entropy()
+            - k_min_eigenentopy()
         should return:
         
         Out:
             - neighborhoods : a list of length len(query_indices) of 'neighborhood' classes
     """
     
-    def __init__(self, cloud, query_indices, save_dir, save_file):
+    def __init__(self, cloud, query_indices, save_dir, save_file, k_min=10, k_max=100):
         
         # call the "saveable" class __init__()
         super().__init__(save_dir, save_file)
@@ -189,29 +201,24 @@ class neighborhood_finder(saveable):
         # store arguments
         self.cloud = cloud
         self.query_indices = query_indices
-        
-        # parameters set internally
-        self.k_min = 10
-        self.k_max = 100
+        self.k_min = k_min
+        self.k_max = k_max
         
         # calculate all needed data
-        self.eigenvalues, self.normals = self.compute_over_k_range()
-        
-        # TO IMPLEMENT
-        # save() with the given file name some hash of the cloud and query_indices
+        self.eigenvalues, self.normals = self.compute_over_k_range(k_min, k_max)
         
         
-    def compute_over_k_range(self):
+    def compute_over_k_range(self, k_min, k_max):
         """ 
             Loop through all considered k values and store needed data:
                 - eigenvectors of the structure tensor l1, l2, l3
-                - the normal vector found with this neghiborhood
+                - the normal vector found with this neighborhood
                 
             Vectorized by querying the knn for all query_indices at a given k
                 
             Out: both outputs have shape (len(query_indices), k_max - k_min, 3)
                 - eigenvalues : np array storing l1, l2, l3 for every value of query_indices and k,
-                - normals : np array storing the normal vector found for every value of query_indices and k,                
+                - normals : np array storing the normal vector found for every value of query_indices and k               
         """
         
         # empty containers for the output
@@ -219,11 +226,28 @@ class neighborhood_finder(saveable):
         normals = np.empty((len(self.query_indices), self.k_max - self.k_min, 3))
         
         for k in range(self.k_min, self.k_max):
-            knn = self.cloud.tree.query(self.query_indices, k, return_distance=False)
+            knns = self.cloud.tree.query(self.query_indices, k, return_distance=False)
             
             # TO IMPLEMENT
-            # implement a call to features_finder to get the PCA, normals, etc
+            # implement a call to local_PCA to get the eigenvalues, normals, etc
             
+        return eigenvalues, normals
+    
+    
+    def local_PCA(self, knns):
+        """  
+            Given knns, find the normals and eigenvalues of structure tensor
+            
+            Out: both outputs have shape (len(query_indices), 3)
+                - eigenvalues : np array storing l1, l2, l3 for every value of query_indices,
+                - normals : np array storing the normal vector found for every value of query_indices
+        """
+        # empty containers for the output
+        eigenvalues = np.empty((len(self.query_indices), 3))
+        normals = np.empty((len(self.query_indices), 3))
+        
+        # TO IMPLEMENT
+        
         return eigenvalues, normals
         
         
@@ -264,20 +288,90 @@ class neighborhood_finder(saveable):
         
 
 class features_finder(saveable):
-    """ Given points, queries, and neighborhoods, find features """
-    def __init__(self, points, queries, neighborhoods):
-        self.points = points
-        self.queries = queries
+    """ 
+        Given a cloud, query indices, and corresponding neighborhoods, find features.
+        
+        In: 
+            - cloud and query_indices : see the 'neighborhood_finder'
+            - neighborhoods : neighborhoods corresponding to the query_indices
+            - save_dir and save_file : see "saveable" class
+        
+        Out: functions dedicated to a single feature return a 1D numpy array.
+            Those returning a collection of n different features return a 
+            numpy array of shape (len(query_indices), n)
+        
+        Methods returning a collection of features are:
+            - features_dim()
+            - features_2D()
+            - features_3D()
+            - features_2D_bins()
+    """
+    
+    def __init__(self, cloud, query_indices, neighborhoods, save_dir, save_file):
+        # call the "saveable" class __init__()
+        super().__init__(save_dir, save_file)
+        
+        self.cloud = cloud
+        self.query_indices = query_indices
         self.neighborhoods = neighborhoods
         
-    def get_structure_tensors(self):
-        for neighborhood in self.neighborhoods:
-            pass
             
-    def get_dimensionality_features():
-        # sphericity, planarity, linearity
+    def features_dim(self):
+        """ 
+            Find the dimensionality features:
+                - linearity
+                - planarity
+                - sphericity 
+        """
         pass
-
+    
+    
+    def features_2D(self):
+        """ 
+            Return local 2D features (except bin-related ones):
+                - geometric 2D properties:
+                    - 2D radius
+                    - 2D local point density
+                - 2D shape features:
+                    - eigenvalue sum
+                    - eigenvalue ratio
+        """
+        pass
+        
+    
+    def features_3D(self):
+        """ 
+            Return all local 3D features (including dimensionality features):
+                - geometric 3D properties:
+                    - absolute height
+                    - radius
+                    - maximum height difference
+                    - height standard deviation
+                    - local point density
+                    - verticality
+                - dimensionality features:
+                    - linearity
+                    - planarity
+                    - sphericity 
+                - other 3D shape features:
+                    - omnivariance
+                    - anisotropy
+                    - eigenentropy
+                    - eigenvalue sum
+                    - change of curvature
+        """
+        pass    
+    
+    
+    def features_2D_bins(self, side_length):
+        """ 
+            Return 2D accumulation map features:
+                - number of points in bin
+                - maximum height difference in bin
+                - height standard deviation in bin
+        """
+        pass
+    
 
 class classifier:
     """ container for the different classifiers we want to test """
