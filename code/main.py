@@ -151,26 +151,116 @@ class test_cloud(cloud):
     
         
 class neighborhood:
-    """ general class for a point's k nearest neighborhood """
+    """ general class for a point's neighborhood """
     
-    def __init(self, cloud, indices):
+    def __init(self, cloud, indices, normal, eigenvalues):
         self.indices = indices
         self.cloud = cloud
         self.k = len(indices)
+        self.normal = normal
+        self.eigenvalues = eigenvalues
     
     def points(self):
         return self.cloud.points[self.indices]
     
 
 class neighborhood_finder(saveable):
-    """ Given points and queries, find a neighborhood size """
-    def __init__(self, points, queries, ):
-        self.points = points
-        self.queries = queries
+    """ 
+        Given a cloud and query indices, find a neighborhood.  
         
-    def k_with_min_entropy(entropy_func, k_min=10, k_max=100):
-        for k in range(k_min, k_max):
-            pass
+        In: 
+            - cloud : the relevant 'cloud' class
+            - query_indices : indices of the points in the cloud of which we want neighborhoods
+            - save_dir and save_file : see "saveable" class
+        
+        The different optimal neighbourhood finders which are
+        k_critical_curvature(), k_min_shannon_entropy(), and k_min_eigenentopy()
+        should return:
+        
+        Out:
+            - neighborhoods : a list of length len(query_indices) of 'neighborhood' classes
+    """
+    
+    def __init__(self, cloud, query_indices, save_dir, save_file):
+        
+        # call the "saveable" class __init__()
+        super().__init__(save_dir, save_file)
+        
+        # store arguments
+        self.cloud = cloud
+        self.query_indices = query_indices
+        
+        # parameters set internally
+        self.k_min = 10
+        self.k_max = 100
+        
+        # calculate all needed data
+        self.eigenvalues, self.normals = self.compute_over_k_range()
+        
+        # TO IMPLEMENT
+        # save() with the given file name some hash of the cloud and query_indices
+        
+        
+    def compute_over_k_range(self):
+        """ 
+            Loop through all considered k values and store needed data:
+                - eigenvectors of the structure tensor l1, l2, l3
+                - the normal vector found with this neghiborhood
+                
+            Vectorized by querying the knn for all query_indices at a given k
+                
+            Out: both outputs have shape (len(query_indices), k_max - k_min, 3)
+                - eigenvalues : np array storing l1, l2, l3 for every value of query_indices and k,
+                - normals : np array storing the normal vector found for every value of query_indices and k,                
+        """
+        
+        # empty containers for the output
+        eigenvalues = np.empty((len(self.query_indices), self.k_max - self.k_min, 3))
+        normals = np.empty((len(self.query_indices), self.k_max - self.k_min, 3))
+        
+        for k in range(self.k_min, self.k_max):
+            knn = self.cloud.tree.query(self.query_indices, k, return_distance=False)
+            
+            # TO IMPLEMENT
+            # implement a call to features_finder to get the PCA, normals, etc
+            
+        return eigenvalues, normals
+        
+        
+    def k_critical_curvature():
+        """
+            k maximizing the change in curvature C = l3 / (l1 + l2 + l3)
+            where li is the ith biggest eigenvalue of the structure tensor
+        """
+        
+        # TO IMPLEMENT
+        neighborhoods = []
+        
+        return neighborhoods
+    
+
+    def k_min_shannon_entropy():
+        """
+            k minimizing the entropy Edim = - L*ln(L) - P*ln(P) - S*ln(S)
+            where L, P and S are the linearity, planarity and sphericity
+        """
+        
+        # TO IMPLEMENT
+        neighborhoods =[]
+        
+        return neighborhoods
+    
+        
+    def k_min_eigenentopy():
+        """
+            k minimizing the entropy El = - e1*ln(e1) - e2*ln(e2) - e2*ln(e2)
+            where ei is the normalized ith biggest eigenvalue of the structure tensor
+        """
+        
+        # TO IMPLEMENT
+        neighborhoods = []
+        
+        return neighborhoods
         
 
 class features_finder(saveable):
