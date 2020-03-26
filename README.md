@@ -10,25 +10,12 @@ by Martin Weinmann, Boris Jutzi, Stefan Hinz, Clément Mallet
 
 Ginger Delmas & Jeffery Durand
 
-**RENDEZ-VOUS**
+**Datasets**
 
-- Mardi 17 Mars après-midi
-- Samedi 21 Mars après-midi
-- Lundi 30 Mars
-
-**Datasets à checker**
-
-- KITTI : http://www.cvlibs.net/datasets/kitti/
-- Semantic3D : http://semantic3d.net/
-- SceneNet RGBD : https://robotvault.bitbucket.io/scenenet-rgbd.html
-- RGBD SLAM TUM : https://vision.in.tum.de/data/datasets/rgbd-dataset
-- S3DIS : http://buildingparser.stanford.edu/dataset.html
-- SceneNN : http://scenenn.net/
-- SemanticKITTI : http://semantic-kitti.org/
-- Paris-Lille-3D : http://npm3d.fr/paris-lille-3d
-- 3DMatch : http://3dmatch.cs.princeton.edu/
-- Stanford Scan repository: https://graphics.stanford.edu/data/3Dscanrep/
-- ModelNet : http://modelnet.cs.princeton.edu/
-
-
-Modification à la con
+- OK [outdoor] : Semantic3D : http://semantic3d.net/
+- OK [indoors] : SceneNet RGBD : https://robotvault.bitbucket.io/scenenet-rgbd.html -> https://github.com/jmccormac/pySceneNetRGBD pour récupérer les labels sémantiques de NYUv2
+- OK [in & out door] : S3DIS : http://buildingparser.stanford.edu/dataset.html
+- SemanticKITTI [outdoor] : http://semantic-kitti.org/
+- Paris-Lille-3D [outdoor] : http://npm3d.fr/paris-lille-3d
+- Oakland 3D [outdoor] : https://www.cs.cmu.edu/~vmr/datasets/oakland_3d/cvpr09/doc/
+- NYU [indoor] : https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
