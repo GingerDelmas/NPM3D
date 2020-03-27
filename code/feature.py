@@ -44,6 +44,7 @@ class features_finder(saveable):
                         contains normals coordinates for every point of query_indices
                         and the right value of "k"
             - save_dir and save_file : see "saveable" class
+            - height_axis : on wich axis is saved the height variable (typically, it is "z", and axis=2)
 
         Out: functions dedicated to a single feature return a 1D numpy array.
             Those returning a collection of n different features return a
@@ -56,7 +57,7 @@ class features_finder(saveable):
             - features_2D_bins()
     """
 
-    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file):
+    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file, height_axis=2):
         # call the "saveable" class __init__()
         super().__init__(save_dir, save_file)
 
@@ -65,6 +66,7 @@ class features_finder(saveable):
         self.neighborhoods_size = neighborhoods_size
         self.eigenvalues = eigenvalues
         self.normals = normals
+        self.height_axis = height_axis
 
 
     def features_dim(self):
@@ -118,8 +120,63 @@ class features_finder(saveable):
                     - eigenvalue sum
                     - change of curvature
         """
-        pass
 
+        eps = 10**(-5) # to avoid errors when eigenvalues = 0 (denominator, log)
+
+        #### get the eigenvalues and normalize them
+        e1, e2, e3 = self.eigenvalues[:,2], self.eigenvalues[:,1], self.eigenvalues[:,0]
+
+        e1 /= e1 + e2 + e3
+        e2 /= e1 + e2 + e3
+        e3 /= e1 + e2 + e3
+
+        #### geometric 3D properties
+
+        # absolute height (no real need to store it...)
+        absolute_height = self.cloud.points[self.query_indices,self.height_axis]
+
+        # radius, maximum height difference, height standard deviation
+        radius = np.zeros(len(self.query_indices))
+        max_height_diff = np.zeros(len(self.query_indices))
+        height_std = np.zeros(len(self.query_indices))
+
+        for ind,q in enumerate(self.query_indices):
+            knn, dist = self.cloud.tree.query(self.cloud.points[q].reshape(1,-1),
+                                              self.neighborhoods_size[ind],
+                                              return_distance=True)
+            radius[ind] = np.max(dist)
+
+            heights = self.cloud.points[knn][:,self.height_axis]
+
+            # QUESTION : is height difference defined wrt the query point ? Should it be negative (if possible) ?
+            # max_height_diff[ind] = np.max(abs(heights - self.cloud[q])) # option 1
+            max_height_diff[ind] = np.max(heights) - np.min(heights) # option 2
+
+            height_std[ind] = np.std(heights)
+
+        # local point density
+        local_point_density = (self.neighborhoods_size+1) / (4./3. * np.pi * radius**3)
+
+        # verticality
+        verticality = 1 - self.normals[:,2]
+
+        #### dimensionality features
+
+        linearity = 1 - e2 / (e1 + eps)
+        planarity = (e2 - e3) / (e1 + eps)
+        sphericity = e3 / (e1 + eps) # = scattering
+
+        ### other 3D shape features
+
+        omnivariance = (e1*e2*e3)**(1/3.)
+        anisotropy = (e1 - e3) / (e1 + eps)
+        eigenentropy = - np.sum([e * np.log(e + eps) for e in [e1,e2,e3]])
+        sum = e1 + e2 + e3
+        curvature_change = e3 / (e1 + e2 + e3 + eps)
+
+        return absolute_height, radius, max_height_diff, height_std, local_point_density,
+                verticality, linearity, planarity, sphericity, omnivariance,
+                anisotropy, eigenentropy, sum, curvature_change
 
     def features_2D_bins(self, side_length):
         """

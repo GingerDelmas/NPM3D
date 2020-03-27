@@ -56,26 +56,35 @@ if __name__ == '__main__':
 
     if developpement:
 
+        # parameters
         i = 0
         file = ply_files[i]
+        num_points_per_label = 3000
+        unic_k = 20
 
+        # load cloud
         tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}'.format(i),
-                        load_if_possible=False, num_points_per_label=3000)
+                        load_if_possible=False, num_points_per_label=num_points_per_label)
 
+        # hand sampled points
         query_indices = np.concatenate([tc.samples_indices[label] for label in tc.samples_indices.keys()])
 
-        unic_k = 20
+        # find the right neighborhood (here : fixed)
         nf = neighborhood_finder(tc, query_indices, save_dir, 'neighbors_{}'.format(i),
                                 k_min=unic_k, k_max=unic_k)
         neighborhoods_size, eigenvalues, normals = nf.k_dummy()
+
+        # compute features
         ff = features_finder(tc, query_indices,
                             neighborhoods_size, eigenvalues, normals,
                             save_dir, 'features_{}'.format(i))
         linearity, planarity, sphericity = ff.features_dim()
 
+        # save result
+        filename = "cloud_{}_{}.ply".format(num_points_per_label, unic_k)
         save_cloud_and_scalar_fields(tc.points[query_indices], [linearity, planarity, sphericity],
                                             ["linearity", "planarity", "sphericity"],
-                                            save_dir, "cloud.ply")
+                                            save_dir, filename)
 
     else :
         for i, file in enumerate(ply_files):

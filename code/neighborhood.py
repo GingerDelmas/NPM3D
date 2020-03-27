@@ -73,7 +73,7 @@ class neighborhood_finder(saveable):
                 (dtype : uint8, to save memory (this assume a point does not have more than 255 neighbors))
             - eigenvalues : shape (len(query_indices), 3)
                             contains l1, l2, l3 for every point of query_indices
-                            and the right value of "k"
+                            and the right value of "k" (NOTE : the eigenvalues should NOT be normalized !)
             - normals : shape (len(query_indices), 3)
                         contains normals coordinates for every point of query_indices
                         and the right value of "k"
