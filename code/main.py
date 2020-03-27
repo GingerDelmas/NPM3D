@@ -26,9 +26,6 @@ from feature import *
 # GLOBAL VARIABLES
 ################################################################################
 
-# it should be "class", but on mini data files
-name_of_class_label = "scalar_class"
-
 # specify wether some calculus must be lighten (eg : work on one cloud only)
 developpement = True
 
@@ -62,18 +59,21 @@ if __name__ == '__main__':
         i = 0
         file = ply_files[i]
 
-        tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}'.format(i))
+        tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}'.format(i),
+                        load_if_possible=False, num_points_per_label=3000)
 
         query_indices = np.concatenate([tc.samples_indices[label] for label in tc.samples_indices.keys()])
 
-        nf = neighborhood_finder(tc, query_indices, save_dir, 'neighbors_{}'.format(i))
+        unic_k = 20
+        nf = neighborhood_finder(tc, query_indices, save_dir, 'neighbors_{}'.format(i),
+                                k_min=unic_k, k_max=unic_k)
         neighborhoods_size, eigenvalues, normals = nf.k_dummy()
         ff = features_finder(tc, query_indices,
                             neighborhoods_size, eigenvalues, normals,
                             save_dir, 'features_{}'.format(i))
         linearity, planarity, sphericity = ff.features_dim()
 
-        save_cloud_and_scalar_fields(cloud[query_indices], [linearity, planarity, sphericity],
+        save_cloud_and_scalar_fields(tc.points[query_indices], [linearity, planarity, sphericity],
                                             ["linearity", "planarity", "sphericity"],
                                             save_dir, "cloud.ply")
 

@@ -23,6 +23,8 @@ from ply import read_ply
 
 from sklearn.neighbors import KDTree
 
+from ply import *
+
 ################################################################################
 # CLASS DEFINITIONS
 ################################################################################

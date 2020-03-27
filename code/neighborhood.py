@@ -124,7 +124,7 @@ class neighborhood_finder(saveable):
 
         for k in range(self.k_min, self.k_max+1): # this includes calculus for k = k_max
             knns = self.cloud.tree.query(self.cloud.points[self.query_indices], k, return_distance=False)
-            eigenvalues[:,k,:], normals[:,k,:] = self.local_PCA(knns)
+            eigenvalues[:,k-self.k_min,:], normals[:,k-self.k_min,:] = self.local_PCA(knns)
 
         return eigenvalues, normals
 
@@ -160,52 +160,52 @@ class neighborhood_finder(saveable):
 
         return eigenvalues, normals
 
-    def k_dummy():
+    def k_dummy(self):
         """
         Returns an array full of a unic k value.
         """
-        neighborhoods_size = np.ones(len(query_indices)).dtype("uint8")*self.k_max
+        neighborhoods_size = np.ones(len(self.query_indices), dtype="uint8")*self.k_min
         eigenvalues = self.eigenvalues_tmp[:,0,:]
         normals = self.normals_tmp[:,0,:]
 
         return neighborhoods_size, eigenvalues, normals
 
-    def k_critical_curvature(): # TODO
+    def k_critical_curvature(self): # TODO
         """
             k maximizing the change in curvature C = l3 / (l1 + l2 + l3)
             where li is the ith biggest eigenvalue of the structure tensor
         """
 
         # TO IMPLEMENT
-        neighborhoods_size = np.ones(len(query_points)).dtype("uint8")
+        neighborhoods_size = np.ones(len(query_points), dtype="uint8")
         eigenvalues = np.zeros((len(self.query_indices), 3))
         normals = np.zeros((len(self.query_indices), 3))
 
         return neighborhoods_size, eigenvalues, normals
 
 
-    def k_min_shannon_entropy(): # TODO
+    def k_min_shannon_entropy(self): # TODO
         """
             k minimizing the entropy Edim = - L*ln(L) - P*ln(P) - S*ln(S)
             where L, P and S are the linearity, planarity and sphericity
         """
 
         # TO IMPLEMENT
-        neighborhoods_size = np.ones(len(query_points)).dtype("uint8")
+        neighborhoods_size = np.ones(len(query_points), dtype="uint8")
         eigenvalues = np.zeros((len(self.query_indices), 3))
         normals = np.zeros((len(self.query_indices), 3))
 
         return neighborhoods_size, eigenvalues, normals
 
 
-    def k_min_eigenentopy(): # TODO
+    def k_min_eigenentopy(self): # TODO
         """
             k minimizing the entropy El = - e1*ln(e1) - e2*ln(e2) - e2*ln(e2)
             where ei is the normalized ith biggest eigenvalue of the structure tensor
         """
 
         # TO IMPLEMENT
-        neighborhoods_size = np.ones(len(query_points)).dtype("uint8")
+        neighborhoods_size = np.ones(len(query_points), dtype="uint8")
         eigenvalues = np.zeros((len(self.query_indices), 3))
         normals = np.zeros((len(self.query_indices), 3))
 
