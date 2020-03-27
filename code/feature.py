@@ -178,12 +178,16 @@ class features_finder(saveable):
         height_std = np.zeros(len(self.query_indices))
 
         for ind,q in enumerate(self.query_indices):
-            knn, dist = self.cloud.tree.query(self.cloud.points[q].reshape(1,-1),
+            dist, knn = self.cloud.tree.query(self.cloud.points[q].reshape(1,-1),
                                               self.neighborhoods_size[ind],
                                               return_distance=True)
+            # there is only one sample
+            dist = dist[0]
+            knn = knn[0]
+
             radius[ind] = np.max(dist)
 
-            heights = self.cloud.points[knn][:,2]
+            heights = self.cloud.points[knn,2]
 
             # QUESTION : is height difference defined wrt the query point ? Should it be negative (if possible) ?
             # max_height_diff[ind] = np.max(abs(heights - self.cloud[q])) # option 1
@@ -207,7 +211,7 @@ class features_finder(saveable):
 
         omnivariance = (e1*e2*e3)**(1/3.)
         anisotropy = (e1 - e3) / (e1 + eps)
-        eigenentropy = - np.sum([e * np.log(e + eps) for e in [e1,e2,e3]])
+        eigenentropy = - e1*np.log(e1 + eps) - e2*np.log(e2 + eps) - e3*np.log(e3 + eps)
         summ = e1 + e2 + e3
         curvature_change = e3 / (e1 + e2 + e3 + eps)
 

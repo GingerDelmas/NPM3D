@@ -61,11 +61,12 @@ if __name__ == '__main__':
         file = ply_files[i]
         num_points_per_label = 3000
         unic_k = 20
-        tested_features="2D-features" # "2D-bins", "feature-dim"
+        tested_features="3D-features" # "2D-bins", "feature-dim"
 
         # load cloud
         tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}_{}'.format(i, num_points_per_label),
                         load_if_possible=True, num_points_per_label=num_points_per_label)
+        tc.save()
 
         # hand sampled points
         query_indices = np.concatenate([tc.samples_indices[label] for label in tc.samples_indices.keys()])
@@ -104,6 +105,19 @@ if __name__ == '__main__':
             filename = "cloud_ft2D_{}_{}.ply".format(num_points_per_label, unic_k)
             save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
                                         ["radius", "local_point_density", "sum", "ratio"],
+                                        save_dir, filename)
+
+        elif tested_features=="3D-features":
+            ft_list = ff.features_3D()
+
+            # save result
+            filename = "cloud_ft3D_{}_{}.ply".format(num_points_per_label, unic_k)
+            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
+                                        ["absolute_height", "radius", "max_height_diff",
+                                        "height_std", "local_point_density", "verticality",
+                                        "linearity", "planarity", "sphericity",
+                                        "omnivariance", "anisotropy", "eigenentropy",
+                                        "summ", "curvature_change"],
                                         save_dir, filename)
 
     else :
