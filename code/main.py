@@ -61,11 +61,11 @@ if __name__ == '__main__':
         file = ply_files[i]
         num_points_per_label = 3000
         unic_k = 20
-        tested_features="2D-bins" #"feature-dim"
+        tested_features="2D-features" # "2D-bins", "feature-dim"
 
         # load cloud
-        tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}'.format(i),
-                        load_if_possible=False, num_points_per_label=num_points_per_label)
+        tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}_{}'.format(i, num_points_per_label),
+                        load_if_possible=True, num_points_per_label=num_points_per_label)
 
         # hand sampled points
         query_indices = np.concatenate([tc.samples_indices[label] for label in tc.samples_indices.keys()])
@@ -81,22 +81,29 @@ if __name__ == '__main__':
                             save_dir, 'features_{}'.format(i))
 
         if tested_features=="feature-dim":
-            linearity, planarity, sphericity = ff.features_dim()
+            ft_list = ff.features_dim()
             # save result
             filename = "cloud_ftdim_{}_{}.ply".format(num_points_per_label, unic_k)
-            save_cloud_and_scalar_fields(tc.points[query_indices],
-                                        [linearity, planarity, sphericity],
+            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
                                         ["linearity", "planarity", "sphericity"],
                                         save_dir, filename)
 
         elif tested_features=="2D-bins":
-            nb_points_in_bin, max_height_diff, height_std = ff.features_2D_bins()
+            ft_list = ff.features_2D_bins()
 
             # save result
             filename = "cloud_ft2Dbins_{}_{}.ply".format(num_points_per_label, unic_k)
-            save_cloud_and_scalar_fields(tc.points[query_indices],
-                                        [nb_points_in_bin, max_height_diff, height_std],
+            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
                                         ["nbPtsInBin", "maxHeightDiff", "heightStd"],
+                                        save_dir, filename)
+
+        elif tested_features=="2D-features":
+            ft_list = ff.features_2D()
+
+            # save result
+            filename = "cloud_ft2D_{}_{}.ply".format(num_points_per_label, unic_k)
+            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
+                                        ["radius", "local_point_density", "sum", "ratio"],
                                         save_dir, filename)
 
     else :

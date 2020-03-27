@@ -131,7 +131,7 @@ class neighborhood_finder(saveable):
 
     def local_PCA(self, knns):
         """
-            Given knns, find the normals and eigenvalues of structure tensor
+            Given knns, find the normals and eigenvalues of the 3D structure tensor.
 
             Out: both outputs have shape (len(query_indices), 3)
                 - eigenvalues : np array storing l1, l2, l3 for every value of query_indices,

@@ -47,7 +47,7 @@ class features_finder(saveable):
 
         Out: functions dedicated to a single feature return a 1D numpy array.
             Those returning a collection of n different features return a
-            numpy array of shape (len(query_indices), n)
+            list with n elements, each being a numpy arrays of size len(query_indices)
 
         Methods returning a collection of features are:
             - features_dim()
@@ -80,7 +80,7 @@ class features_finder(saveable):
         planarity = (lbda2 - lbda3) / (lbda1 + eps)
         sphericity = lbda3 / (lbda1 + eps)
 
-        return linearity, planarity, sphericity
+        return [linearity, planarity, sphericity]
 
 
     def features_2D(self):
@@ -93,8 +93,48 @@ class features_finder(saveable):
                     - eigenvalue sum
                     - eigenvalue ratio
         """
-        pass
 
+        # define useful function here
+        vec2mat = lambda v : np.outer(v,v)
+
+        eigenvalues = np.zeros((len(self.query_indices), 2))
+        radius = np.zeros(len(self.query_indices))
+
+        for ind, q in enumerate(self.query_indices):
+
+            # use the closest neighbors based on 3D distance
+            knn = self.cloud.tree.query(self.cloud.points[q].reshape(1,-1),
+                                              self.neighborhoods_size[ind],
+                                              return_distance=False)[0]
+
+            # keep 2D coordinates only
+            pts = self.cloud.points[knn,:2]
+
+            ## radius
+            # compute the 2D distance
+            dist = np.linalg.norm(pts-self.cloud.points[q,:2], axis=1)
+            radius[ind] = np.max(dist)
+
+            ## compute the eigenvalues, while we're at it
+            centroid = np.mean(pts, axis=0)
+
+            # compute the covariance matrix
+            cov = np.apply_along_axis(vec2mat, 1, pts - centroid)
+            cov = sum(cov)/len(cov)
+
+            # compute the eigenvalues and eigenvectors
+            eigenvalues[ind], _ = np.linalg.eigh(cov)
+
+        # local point density
+        local_point_density = (self.neighborhoods_size+1) / (np.pi * radius**2)
+
+        # sum & ratio
+        lbda1, lbda2 = eigenvalues[:,1], eigenvalues[:,0]
+
+        summ = lbda1 + lbda2
+        ratio = lbda2 / lbda1
+
+        return [radius, local_point_density, summ, ratio]
 
     def features_3D(self):
         """
@@ -168,10 +208,10 @@ class features_finder(saveable):
         omnivariance = (e1*e2*e3)**(1/3.)
         anisotropy = (e1 - e3) / (e1 + eps)
         eigenentropy = - np.sum([e * np.log(e + eps) for e in [e1,e2,e3]])
-        sum = e1 + e2 + e3
+        summ = e1 + e2 + e3
         curvature_change = e3 / (e1 + e2 + e3 + eps)
 
-        return absolute_height, radius, max_height_diff, height_std, local_point_density,verticality, linearity, planarity, sphericity, omnivariance,anisotropy, eigenentropy, sum, curvature_change
+        return [absolute_height, radius, max_height_diff, height_std, local_point_density,verticality, linearity, planarity, sphericity, omnivariance,anisotropy, eigenentropy, summ, curvature_change]
 
     def features_2D_bins(self, side_length=0.20):
         """
@@ -205,4 +245,4 @@ class features_finder(saveable):
                                 if nb_points_in_bin[i]>0 else 0
                                 for i,ind_q in enumerate(ind)])
 
-        return nb_points_in_bin, max_height_diff, height_std
+        return [nb_points_in_bin, max_height_diff, height_std]
