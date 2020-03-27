@@ -44,7 +44,6 @@ class features_finder(saveable):
                         contains normals coordinates for every point of query_indices
                         and the right value of "k"
             - save_dir and save_file : see "saveable" class
-            - height_axis : on wich axis is saved the height variable (typically, it is "z", and axis=2)
 
         Out: functions dedicated to a single feature return a 1D numpy array.
             Those returning a collection of n different features return a
@@ -57,7 +56,7 @@ class features_finder(saveable):
             - features_2D_bins()
     """
 
-    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file, height_axis=2):
+    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file):
         # call the "saveable" class __init__()
         super().__init__(save_dir, save_file)
 
@@ -66,8 +65,6 @@ class features_finder(saveable):
         self.neighborhoods_size = neighborhoods_size
         self.eigenvalues = eigenvalues
         self.normals = normals
-        self.height_axis = height_axis
-
 
     def features_dim(self):
         """
@@ -133,7 +130,7 @@ class features_finder(saveable):
         #### geometric 3D properties
 
         # absolute height (no real need to store it...)
-        absolute_height = self.cloud.points[self.query_indices,self.height_axis]
+        absolute_height = self.cloud.points[self.query_indices,2]
 
         # radius, maximum height difference, height standard deviation
         radius = np.zeros(len(self.query_indices))
@@ -146,7 +143,7 @@ class features_finder(saveable):
                                               return_distance=True)
             radius[ind] = np.max(dist)
 
-            heights = self.cloud.points[knn][:,self.height_axis]
+            heights = self.cloud.points[knn][:,2]
 
             # QUESTION : is height difference defined wrt the query point ? Should it be negative (if possible) ?
             # max_height_diff[ind] = np.max(abs(heights - self.cloud[q])) # option 1
@@ -174,15 +171,38 @@ class features_finder(saveable):
         sum = e1 + e2 + e3
         curvature_change = e3 / (e1 + e2 + e3 + eps)
 
-        return absolute_height, radius, max_height_diff, height_std, local_point_density,
-                verticality, linearity, planarity, sphericity, omnivariance,
-                anisotropy, eigenentropy, sum, curvature_change
+        return absolute_height, radius, max_height_diff, height_std, local_point_density,verticality, linearity, planarity, sphericity, omnivariance,anisotropy, eigenentropy, sum, curvature_change
 
-    def features_2D_bins(self, side_length):
+    def features_2D_bins(self, side_length=0.20):
         """
             Return 2D accumulation map features:
                 - number of points in bin
                 - maximum height difference in bin
                 - height standard deviation in bin
         """
-        pass
+
+        # Look up for the points of the 2D-projected cloud falling into the same bin as the sampled points.
+        # ie : the KDtree is performed on the cloud,
+        # and the query is performed on the center of the cells containing the sampled points.
+        # The chebyshev metric is used to represent a cell, given its center, to find which are the points from
+        # the cloud being in the so-called cell.
+
+        # a) for each sampled (and 2D-projected) point, compute the center of the cell it falls in
+        centers = ((self.cloud.points[self.query_indices,:2] / side_length).astype(int) + 1
+                        ) * side_length + side_length / 2.
+
+        # b) find the points from the 2D-projected cloud falling into the same cells
+        treeBins = KDTree(self.cloud.points[:,:2], metric="chebyshev")
+        ind = treeBins.query_radius(centers, r=side_length/2.)
+
+        # c) compute features
+        nb_points_in_bin = np.array([len(ind_q) for ind_q in ind])
+        max_height_diff = np.array([np.max(self.cloud.points[ind_q,2])
+                                    - np.min(self.cloud.points[ind_q,2])
+                                    if nb_points_in_bin[i]>0 else 0
+                                    for i,ind_q in enumerate(ind)])
+        height_std = np.array([np.std(self.cloud.points[ind_q,2])
+                                if nb_points_in_bin[i]>0 else 0
+                                for i,ind_q in enumerate(ind)])
+
+        return nb_points_in_bin, max_height_diff, height_std

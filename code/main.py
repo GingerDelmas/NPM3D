@@ -61,6 +61,7 @@ if __name__ == '__main__':
         file = ply_files[i]
         num_points_per_label = 3000
         unic_k = 20
+        tested_features="2D-bins" #"feature-dim"
 
         # load cloud
         tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}'.format(i),
@@ -78,13 +79,25 @@ if __name__ == '__main__':
         ff = features_finder(tc, query_indices,
                             neighborhoods_size, eigenvalues, normals,
                             save_dir, 'features_{}'.format(i))
-        linearity, planarity, sphericity = ff.features_dim()
 
-        # save result
-        filename = "cloud_{}_{}.ply".format(num_points_per_label, unic_k)
-        save_cloud_and_scalar_fields(tc.points[query_indices], [linearity, planarity, sphericity],
-                                            ["linearity", "planarity", "sphericity"],
-                                            save_dir, filename)
+        if tested_features=="feature-dim":
+            linearity, planarity, sphericity = ff.features_dim()
+            # save result
+            filename = "cloud_ftdim_{}_{}.ply".format(num_points_per_label, unic_k)
+            save_cloud_and_scalar_fields(tc.points[query_indices],
+                                        [linearity, planarity, sphericity],
+                                        ["linearity", "planarity", "sphericity"],
+                                        save_dir, filename)
+
+        elif tested_features=="2D-bins":
+            nb_points_in_bin, max_height_diff, height_std = ff.features_2D_bins()
+
+            # save result
+            filename = "cloud_ft2Dbins_{}_{}.ply".format(num_points_per_label, unic_k)
+            save_cloud_and_scalar_fields(tc.points[query_indices],
+                                        [nb_points_in_bin, max_height_diff, height_std],
+                                        ["nbPtsInBin", "maxHeightDiff", "heightStd"],
+                                        save_dir, filename)
 
     else :
         for i, file in enumerate(ply_files):

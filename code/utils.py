@@ -82,6 +82,10 @@ def save_cloud_and_scalar_fields(cloud, scalar_fields, fields_name, save_dir, fi
             - save_dir, filename : filename must end with ".ply"
     """
 
+    # Avoid handling bad headers (scalar fields must of float type)
+    for i in range(len(scalar_field)):
+        scalar_field[i] = scalar_field[i].astype(float)
+
     # Store results in a .ply file to visualize in CloudCompare
     write_ply(save_dir + '/' + filename, [cloud] + scalar_fields,
                                         ['x', 'y', 'z'] + fields_name)
