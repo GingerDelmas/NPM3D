@@ -11,8 +11,7 @@ Jeffery Durand and Ginger Delmas
 
 Cloud environment file : here is defined everything that deals directly with the cloud :
     - class cloud
-    - class train_cloud
-    - class test_cloud
+    - class train_test_cloud
 """
 
 ################################################################################
@@ -77,23 +76,43 @@ class cloud(saveable):
         # make the KD Tree
         self.tree = KDTree(self.points)
 
+    def get_statistics(self):
+        """
+        Get statistics about the number of element per class.
+        This won't work if the attribute "labels" doesn't exist.
+        """
+
+        print("\nStatistics :")
+        try:
+            for label in self.label_names.keys():
+                print("   - class '{}' represent {} points.".format(
+                        self.label_names[label],
+                        len(np.flatnonzero(self.labels == label))))
+        except:
+            print("Attribute 'labels' does not exist : please include labels on load.")
+        print("\n")
 
 # *******************************CLASS SEPARATION***********************************************
 
 
-class train_cloud(cloud):
+class train_test_cloud(cloud):
     """
         Basic class for a training point cloud, deriving from the cloud class. Takes:
             - ply_path, save_dir, and save_file: see "cloud" class
             - load_if_possible : if True, loads the previously saved version if possible
-            - num_points_per_label : number of points to randomly sample per labeled class
+            - num_points_per_label_train : number of points to randomly sample per labeled class
+                                           for the train set
+            - num_points_per_label_test : idem, but for the test set
 
         Attributes :
-            - samples_indices : dictionnary linking labels to indices (in the cloud) of the randomly sampled points
+            - train_samples_indices : dictionary linking labels to indices (in the cloud)
+                                        of the randomly sampled points for the train set
+            - test_samples_indices : as train_samples_indices, but for the test set
+
     """
 
     def __init__(self, ply_path, save_dir, save_file, load_if_possible=True,
-                 num_points_per_label=500):
+                 num_points_per_label_train=500, num_points_per_label_test=500):
 
         # call the "cloud" class __init__()
         super().__init__(ply_path, save_dir, save_file)
@@ -102,18 +121,30 @@ class train_cloud(cloud):
         if not self.load(load_if_possible):
             # include labels since this is the train set
             self.fetch_points(include_labels=True)
-            self.sample_n_points_per_label(num_points_per_label)
+            self.train_samples_indices = self.sample_n_points_per_label(num_points_per_label_train, train=True)
+            self.test_samples_indices = self.sample_n_points_per_label(num_points_per_label_test, test=True)
 
 
-    def sample_n_points_per_label(self, num_points_per_label):
+    def sample_n_points_per_label(self, num_points_per_label, train=False, test=False):
         """
             Sample a fixed number of points per labeled class to:
                 1) limit computation time
                 2) avoid bias more common classes
+
+            In :
+                - num_points_per_label : number of points to sample
+                - train : whether the sampling is performed for the train set.
+                - test : whether the sampling is for the test set
+                         If True, points used for the train set are not samplable.
+
+            If both train and test are set to False, then this just samples some points.
+
+            Out :
+                - samples_indices : dictionary linking labels to indices (sampled points from the cloud)
         """
 
         # dictionary of sampled points
-        self.samples_indices = {}
+        samples_indices = {}
 
         for label in self.label_names.keys():
 
@@ -122,32 +153,20 @@ class train_cloud(cloud):
 
             # randomly sample points corresponding to the given label
             # choose as many as possible if there aren't enough points
+
             label_indices = np.flatnonzero(self.labels == label)
+
+            if test : # don't consider points that were already sampled for the train set
+                label_indices = set(label_indices).difference(set(self.train_samples_indices[label]))
+                label_indices = np.array(list(label_indices))
+
             try:
                 sampled_indices = np.random.choice(label_indices, num_points_per_label, replace=False)
             except ValueError:
                 sampled_indices = label_indices
-                print("Warning: class '{}' only has {}/{} points".format(
+                print("Warning: class '{}' only has {}/{} points (left)".format(
                     self.label_names[label], len(label_indices), num_points_per_label))
 
-            # add to the recorded sampled points
-            self.samples_indices[label] = sampled_indices
+            samples_indices[label] = sampled_indices
 
-        return self.samples_indices
-
-
-# *******************************CLASS SEPARATION***********************************************
-
-
-class test_cloud(cloud):
-    """ Basic class for a test point cloud """
-
-    def __init__(self, ply_path, save_dir, save_file, load_if_possible=True):
-
-        # call the "cloud" class __init__()
-        super().__init__(ply_path, save_dir, save_file)
-
-        # if load_if_possible is True and load() succeeds, skip initializing
-        if not self.load(load_if_possible):
-            # skip labels since this is the test set
-            self.fetch_points(include_labels=False)
+        return samples_indices

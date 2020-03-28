@@ -441,3 +441,23 @@ class features_finder(saveable):
         R = n * rho_xc / (n + n * (n-1) * rho_xx)**0.5
 
         return R
+
+    def hand_features(self, selected_specific=None, compute_specific=False):
+        """
+        Return a matrix of size (len(query_indices), number of features), where
+        the features used are those specified by the attribute "selected", or by
+        "selected_specific" if "compute_specific" is set to True.
+
+        In :
+            - selected_specific : list of names of the features to select from
+                                  the attribute "features"
+            - compute_specific : (see previous explanation)
+
+        Out :
+            - matrix of size (len(query_indices), number of features)
+        """
+
+        if compute_specific:
+            return np.vstack([self.features[f] for f in selected_specific]).T
+        else:
+            return np.vstack([self.features[f] for f in self.selected]).T

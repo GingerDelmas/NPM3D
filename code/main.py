@@ -30,14 +30,6 @@ from feature import *
 developpement = True
 
 ################################################################################
-# CLASS DEFINITIONS
-################################################################################
-
-class classifier:
-    """ container for the different classifiers we want to test """
-    pass
-
-################################################################################
 # MAIN
 ################################################################################
 
@@ -58,25 +50,32 @@ if __name__ == '__main__':
         ### parameters
         i = 0
         file = ply_files[i]
-        num_points_per_label = 3000
+        nppl_train = 1000
+        nppl_test = 3000
         unic_k = 20
         saveCloud = False
         load = True
 
         ### load cloud
         print('Collect and preprocess training sets')
-        tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}_{}'.format(i, num_points_per_label),
-                        load_if_possible=True, num_points_per_label=num_points_per_label)
+        tc = train_test_cloud(train_dir + '/' + file, save_dir,
+                        'train_cloud_{}_tr{}_te{}'.format(i, nppl_train, nppl_test),
+                        load_if_possible=load,
+                        num_points_per_label_train=nppl_train,
+                        num_points_per_label_test=nppl_test)
+
+        tc.get_statistics()
+
         if not load:
             tc.save()
 
         # hand sampled points
-        query_indices = np.concatenate([tc.samples_indices[label] for label in tc.samples_indices.keys()])
+        query_indices = np.concatenate([tc.train_samples_indices[label] for label in tc.train_samples_indices.keys()])
 
         ### find the right neighborhood (here : fixed)
         print("Compute neighborhoods")
         nf = neighborhood_finder(tc, query_indices, save_dir, 'neighbors_{}'.format(i),
-                                load_if_possible=True, k_min=unic_k, k_max=unic_k)
+                                load_if_possible=load, k_min=unic_k, k_max=unic_k)
         if not load :
             nf.save()
 
@@ -100,6 +99,10 @@ if __name__ == '__main__':
         ff.feature_selection()
         print("-> selected features : {}".format(ff.selected))
 
+        ### classify
+        print("Classify")
+        X = ff.hand_features()
+
         ### save result
         if saveCloud:
             ft_list, ft_names = ff.prepare_features_for_ply()
@@ -109,7 +112,7 @@ if __name__ == '__main__':
 
     else :
         for i, file in enumerate(ply_files):
-            tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}'.format(i))
+            tc = train_test_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}'.format(i))
             tc.save()
             print("Processed {}/{} clouds: {}".format(i + 1, len(ply_files), file))
 
