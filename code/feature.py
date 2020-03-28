@@ -19,6 +19,7 @@ Feature file : here is defined everything to compute features (and linked values
 
 import numpy as np
 from sklearn.neighbors import KDTree
+import matplotlib.pyplot as plt
 
 from utils import *
 from cloud_env import *
@@ -54,6 +55,15 @@ class features_finder(saveable):
             - features_2D()
             - features_3D()
             - features_2D_bins()
+
+        Other methods :
+            - prepare_features_for_ply()
+            - feature_selection()
+
+        Attributes :
+            - cloud, query_indices, neighborhoods_size, eigenvalues, normals : (input)
+            - features : dictionary built as feature_name -> array of length len(query_indices),
+                        updated when calling the methods computing the different features.
     """
 
     def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file):
@@ -65,6 +75,7 @@ class features_finder(saveable):
         self.neighborhoods_size = neighborhoods_size
         self.eigenvalues = eigenvalues
         self.normals = normals
+        self.features = {}
 
     def features_dim(self):
         """
@@ -78,7 +89,12 @@ class features_finder(saveable):
 
         linearity = 1 - lbda2 / (lbda1 + eps)
         planarity = (lbda2 - lbda3) / (lbda1 + eps)
-        sphericity = lbda3 / (lbda1 + eps)
+        sphericity = lbda3 / (lbda1 + eps) # = scattering
+
+        # update the feature dictioary
+        self.features["linearity"] = linearity
+        self.features["planarity"] = planarity
+        self.features["sphericity"] = sphericity
 
         return [linearity, planarity, sphericity]
 
@@ -133,6 +149,12 @@ class features_finder(saveable):
 
         summ = lbda1 + lbda2
         ratio = lbda2 / lbda1
+
+        # update the feature dictioary
+        self.features["radius_2D"] = radius
+        self.features["local_point_density_2D"] = local_point_density
+        self.features["eigen_sum_2D"] = summ
+        self.features["eigen_ratio_2D"] = ratio
 
         return [radius, local_point_density, summ, ratio]
 
@@ -205,7 +227,7 @@ class features_finder(saveable):
 
         linearity = 1 - e2 / (e1 + eps)
         planarity = (e2 - e3) / (e1 + eps)
-        sphericity = e3 / (e1 + eps) # = scattering
+        sphericity = e3 / (e1 + eps)
 
         ### other 3D shape features
 
@@ -215,7 +237,22 @@ class features_finder(saveable):
         summ = e1 + e2 + e3
         curvature_change = e3 / (e1 + e2 + e3 + eps)
 
-        return [absolute_height, radius, max_height_diff, height_std, local_point_density,verticality, linearity, planarity, sphericity, omnivariance,anisotropy, eigenentropy, summ, curvature_change]
+        # update the feature dictioary
+        self.features["absolute_height"] = absolute_height
+        self.features["radius_3D"] = radius
+        self.features["max_height_diff_3D"] = max_height_diff
+        self.features["height_std_3D"] = height_std
+        self.features["local_point_density_3D"] = local_point_density
+        self.features["verticality"] = verticality
+        self.features["linearity"] = linearity
+        self.features["planarity"] = planarity
+        self.features["omnivariance"] = omnivariance
+        self.features["anisotropy"] = anisotropy
+        self.features["eigenentropy"] = eigenentropy
+        self.features["eigen_sum_3D"] = summ
+        self.features["curvature_change"] = curvature_change
+
+        return [absolute_height, radius, max_height_diff, height_std, local_point_density, verticality, linearity, planarity, sphericity, omnivariance,anisotropy, eigenentropy, summ, curvature_change]
 
     def features_2D_bins(self, side_length=0.20):
         """
@@ -249,4 +286,53 @@ class features_finder(saveable):
                                 if nb_points_in_bin[i]>0 else 0
                                 for i,ind_q in enumerate(ind)])
 
+        # update the feature dictioary
+        self.features["nb_points_in_bin"] = nb_points_in_bin
+        self.features["max_height_diff_2D"] = max_height_diff
+        self.features["height_std_2D"] = height_std
+
         return [nb_points_in_bin, max_height_diff, height_std]
+
+
+    def prepare_features_for_ply(self):
+        """
+        Return a list, scalar_field, containing the different feature values,
+        and another list containing the names of the features.
+        Use case : input to save the cloud and visualize the features in CloudCompare.
+        """
+
+        ft_names = [k for k in self.features.keys()]
+        scalar_field = [self.features[u] for u in ft_names]
+
+        return scalar_field, ft_names
+
+
+    def feature_selection(self, features_specific=None, compute_specific=False, plot_corr=False):
+
+        """
+        Feature selection is performed on the previously computed features
+        (see attribute "features"), unless "compute_specific" is set to True,
+        in which case feature  selection is performed on "features_specific".
+
+        In :
+            - features_specific : dictionary on the same model as the "features" attribute
+            - compute_specific : boolean
+            - plot_corr : whether to plot an image representing correlation between features and class.
+
+        Out :
+            - the list of names of the selected features, corresponding to keys
+                of the "features" attribute (or "features_specific", depending on "compute_specific").
+        """
+
+        # corr = data.corr()
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111)
+        # cax = ax.matshow(corr,cmap='coolwarm', vmin=-1, vmax=1)
+        # fig.colorbar(cax)
+        # ticks = np.arange(0,len(data.columns),1)
+        # ax.set_xticks(ticks)
+        # plt.xticks(rotation=90)
+        # ax.set_yticks(ticks)
+        # ax.set_xticklabels(data.columns)
+        # ax.set_yticklabels(data.columns)
+        # plt.show()

@@ -61,7 +61,7 @@ if __name__ == '__main__':
         file = ply_files[i]
         num_points_per_label = 3000
         unic_k = 20
-        tested_features="3D-features" # "2D-bins", "feature-dim"
+        tested_features="wrap" # "2D-bins", "feature-dim"
 
         # load cloud
         tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}_{}'.format(i, num_points_per_label),
@@ -81,7 +81,17 @@ if __name__ == '__main__':
                             neighborhoods_size, eigenvalues, normals,
                             save_dir, 'features_{}'.format(i))
 
-        if tested_features=="feature-dim":
+        if tested_features=="wrap":
+            ff.features_dim()
+            ff.features_2D_bins()
+            ft_list, ft_names = ff.prepare_features_for_ply()
+            # save result
+            filename = "cloud_wrap_{}_{}.ply".format(num_points_per_label, unic_k)
+            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
+                                        ft_names, save_dir, filename)
+
+
+        elif tested_features=="feature-dim":
             ft_list = ff.features_dim()
             # save result
             filename = "cloud_ftdim_{}_{}.ply".format(num_points_per_label, unic_k)
