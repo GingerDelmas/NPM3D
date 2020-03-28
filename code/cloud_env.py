@@ -90,7 +90,7 @@ class cloud(saveable):
                         len(np.flatnonzero(self.labels == label))))
         except:
             print("Attribute 'labels' does not exist : please include labels on load.")
-        print("\n")
+        print("")
 
 # *******************************CLASS SEPARATION***********************************************
 
@@ -109,6 +109,9 @@ class train_test_cloud(cloud):
                                         of the randomly sampled points for the train set
             - test_samples_indices : as train_samples_indices, but for the test set
 
+        Methods :
+            - sample_n_points_per_label
+            - hand_sampled_points
     """
 
     def __init__(self, ply_path, save_dir, save_file, load_if_possible=True,
@@ -158,7 +161,7 @@ class train_test_cloud(cloud):
 
             if test : # don't consider points that were already sampled for the train set
                 label_indices = set(label_indices).difference(set(self.train_samples_indices[label]))
-                label_indices = np.array(list(label_indices))
+                label_indices = np.array(list(label_indices)).astype(int)
 
             try:
                 sampled_indices = np.random.choice(label_indices, num_points_per_label, replace=False)
@@ -170,3 +173,12 @@ class train_test_cloud(cloud):
             samples_indices[label] = sampled_indices
 
         return samples_indices
+
+    def hand_sampled_points(self, samples_indices):
+        """
+        Convert the content of the dictionary "samples_indices" to get the indices only,
+        into an array.
+        """
+
+        return np.concatenate([samples_indices[label]
+                                        for label in samples_indices.keys()])

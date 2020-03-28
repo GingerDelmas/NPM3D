@@ -33,31 +33,36 @@ class classifier:
     """ Container to test different kind of classifiers.
 
     In:
-        - cloud and query_indices : see 'neighborhood_finder'
-        - X : matrix of size (len(query_indices), number of features)
+        - cloud
+        - train_indices, test_indices : "query_indices" for both set
+        - X_train, X_test : matrix of size (len(query_indices), number of features)
 
     Attributes:
-        - cloud, query_indices, X : (as input)
-        - y : labels of query_indices
+        - cloud, train_indices, X_train, X_test : (as input)
+        - y_train, y_test : labels for the query_indices
 
     Methods :
-        - randomForest : return a trained classifier
+        - random_forest : return a trained classifier
         - evaluate(classifier)
 
     """
 
-    def __init__(self, cloud, query_indices, X):
+    def __init__(self, cloud, train_indices, test_indices, X_train, X_test):
 
         self.cloud = cloud
-        self.query_indices = query_indices
-        self.X = features
-        self.y = self.cloud.labels[self.query_indices]
+        self.train_indices = train_indices
+        self.test_indices = test_indices
+        self.X_train = X_train
+        self.X_test = X_test
+        self.y_train = self.cloud.labels[self.train_indices]
+        self.y_test = self.cloud.labels[self.test_indices]
 
-    def random_forest():
+    def random_forest(self):
         clf = RandomForestClassifier(random_state=0)
-        clf.fit(self.X, self.y)
+        clf.fit(self.X_train, self.y_train)
         return clf
 
-    def evaluate(clf):
-
-        y_pred
+    def evaluate(self, clf):
+        y_pred = clf.predict(self.X_test)
+        score = np.sum(y_pred == self.y_test)/len(self.y_test)
+        return y_pred, score

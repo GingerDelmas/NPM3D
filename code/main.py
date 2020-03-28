@@ -21,6 +21,7 @@ from utils import *
 from cloud_env import *
 from neighborhood import *
 from feature import *
+from classifier import *
 
 ################################################################################
 # GLOBAL VARIABLES
@@ -70,44 +71,63 @@ if __name__ == '__main__':
             tc.save()
 
         # hand sampled points
-        query_indices = np.concatenate([tc.train_samples_indices[label] for label in tc.train_samples_indices.keys()])
+        train_indices = tc.hand_sampled_points(tc.train_samples_indices)
+        test_indices = tc.hand_sampled_points(tc.test_samples_indices)
 
         ### find the right neighborhood (here : fixed)
         print("Compute neighborhoods")
-        nf = neighborhood_finder(tc, query_indices, save_dir, 'neighbors_{}'.format(i),
+        nf_train = neighborhood_finder(tc, train_indices, save_dir, 'neighbors_train_{}'.format(i),
+                                load_if_possible=load, k_min=unic_k, k_max=unic_k)
+        nf_test = neighborhood_finder(tc, test_indices, save_dir, 'neighbors_test_{}'.format(i),
                                 load_if_possible=load, k_min=unic_k, k_max=unic_k)
         if not load :
-            nf.save()
+            nf_train.save()
+            nf_test.save()
 
-        neighborhoods_size, eigenvalues, normals = nf.k_dummy()
+        neighborhoods_size_tr, eigenvalues_tr, normals_tr = nf_train.k_dummy()
+        neighborhoods_size_te, eigenvalues_te, normals_te = nf_test.k_dummy()
 
         ### compute features
         print("Compute features")
-        ff = features_finder(tc, query_indices,
-                            neighborhoods_size, eigenvalues, normals,
-                            save_dir, 'features_{}'.format(i))
+        ff_tr = features_finder(tc, train_indices,
+                            neighborhoods_size_tr, eigenvalues_tr, normals_tr,
+                            save_dir, 'features_train_{}'.format(i))
+        ff_te = features_finder(tc, test_indices,
+                            neighborhoods_size_te, eigenvalues_te, normals_te,
+                            save_dir, 'features_test_{}'.format(i))
 
         if not load :
-            ff.features_dim()
-            ff.features_2D_bins()
-            ff.save()
+            ff_tr.features_dim()
+            ff_tr.features_2D_bins()
+            ff_tr.save()
+
+            ff_te.features_dim()
+            ff_te.features_2D_bins()
+            ff_te.save()
+
         else :
-            ff.load()
+            ff_tr.load()
+            ff_te.load()
 
         ### feature selection
         print("Do feature selection")
-        ff.feature_selection()
-        print("-> selected features : {}".format(ff.selected))
+        ff_tr.feature_selection()
+        print("... selected features : {}".format(ff_tr.selected))
 
         ### classify
         print("Classify")
-        X = ff.hand_features()
+        X_train = ff_tr.hand_features()
+        X_test = ff_te.hand_features(selected_specific=ff_tr.selected, compute_specific=True)
+        clf = classifier(tc, train_indices, test_indices, X_train, X_test)
+        rf = clf.random_forest()
+        y_pred, score = clf.evaluate(rf)
+        print("... evaluation : {}% of points from the testing set were correctly classified.".format(np.round(score,2)*100))
 
-        ### save result
+        ### save result (train set, here)
         if saveCloud:
-            ft_list, ft_names = ff.prepare_features_for_ply()
+            ft_list, ft_names = ff_tr.prepare_features_for_ply()
             filename = "cloud_wrap_{}_{}.ply".format(num_points_per_label, unic_k)
-            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
+            save_cloud_and_scalar_fields(tc.points[train_indices], ft_list,
                                         ft_names, results_dir, filename)
 
     else :
@@ -118,4 +138,4 @@ if __name__ == '__main__':
 
 
     t1 = time.time()
-    print('Done in %.3fs\n' % (t1 - t0))
+    print('Done in %.3f seconds.\n' % (t1 - t0))
