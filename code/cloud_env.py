@@ -46,6 +46,7 @@ class cloud(saveable):
             - label_names : [hard coded] name of the different admitted labels
             - ply_path : (as input)
             - points : matrix of size (number of points , 3) containing the coordinates of each point
+            - labels : array of size (number of points), containing the labels for each point
             - tree : KDTree based on "points"
 
     """

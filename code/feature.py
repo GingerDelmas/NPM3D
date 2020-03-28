@@ -59,6 +59,7 @@ class features_finder(saveable):
         Other methods :
             - prepare_features_for_ply()
             - feature_selection()
+            - compute_relevance() (used in feature_selection)
 
         Attributes :
             - cloud, query_indices, neighborhoods_size, eigenvalues, normals : (input)
@@ -301,13 +302,14 @@ class features_finder(saveable):
         Use case : input to save the cloud and visualize the features in CloudCompare.
         """
 
-        ft_names = [k for k in self.features.keys()]
+        ft_names = list(self.features.keys())
         scalar_field = [self.features[u] for u in ft_names]
 
         return scalar_field, ft_names
 
 
-    def feature_selection(self, features_specific=None, compute_specific=False, plot_corr=False):
+    def feature_selection(self, features_specific=None, compute_specific=False,
+                            plot_corr=False, results_dir=None, filename="corr_ft_class.png"):
 
         """
         Feature selection is performed on the previously computed features
@@ -318,21 +320,75 @@ class features_finder(saveable):
             - features_specific : dictionary on the same model as the "features" attribute
             - compute_specific : boolean
             - plot_corr : whether to plot an image representing correlation between features and class.
+            - results_dir, filename : to save the figure representing correlation between features and class.
 
         Out :
             - the list of names of the selected features, corresponding to keys
                 of the "features" attribute (or "features_specific", depending on "compute_specific").
         """
 
-        # corr = data.corr()
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111)
-        # cax = ax.matshow(corr,cmap='coolwarm', vmin=-1, vmax=1)
-        # fig.colorbar(cax)
-        # ticks = np.arange(0,len(data.columns),1)
-        # ax.set_xticks(ticks)
-        # plt.xticks(rotation=90)
-        # ax.set_yticks(ticks)
-        # ax.set_xticklabels(data.columns)
-        # ax.set_yticklabels(data.columns)
-        # plt.show()
+        # compute the correlation matrix between features and class label
+        C = self.cloud.labels[self.query_indices]
+
+        if compute_specific:
+            names = list(features_specific.keys())+["class label"]
+            M = np.vstack([features_specific[k] for k in features_specific]+[C])
+            feat2ind = {ft:i for i, ft in enumerate(features_specific)}
+        else:
+            names = list(self.features.keys())+["class label"]
+            M = np.vstack([self.features[k] for k in self.features]+[C])
+            feat2ind = {ft:i for i, ft in enumerate(self.features)}
+
+        ind2feat = {feat2ind[ft]:ft for ft in feat2ind}
+
+        corr = np.corrcoef(M)
+
+        # display the correlation matrix (code from https://medium.com/@sebastiannorena/finding-correlation-between-many-variables-multidimensional-dataset-with-python-5deb3f39ffb3)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(corr,cmap='coolwarm', vmin=-1, vmax=1)
+        fig.colorbar(cax)
+        ticks = np.arange(0,len(names),1)
+        ax.set_xticks(ticks)
+        plt.xticks(rotation=90)
+        ax.set_yticks(ticks)
+        ax.set_xticklabels(names)
+        ax.set_yticklabels(names)
+        # save results
+        if results_dir==None :
+            results_dir = self.save_dir
+            plt.savefig(results_dir+"/"+filename)
+        # plot the correlation matrix, if asked
+        if plot_corr:
+            plt.show()
+
+        # find what subset of features maximizes the relevance
+        # TODO
+
+        return
+
+    def compute_relevance(corr, subset):
+        """
+        In :
+            - corr : the correlation matrix between features and class label
+                     (the class label is represented by both the last row and column)
+            - subset : list of indices representing the features on wich to compute the relevance
+        Out :
+            - relevance : float
+        """
+
+        n = len(subset)
+
+        # get rho_xx
+        subset = np.array(subset)
+        R_xx = corr[subset][:,subset]
+        rho_xx = R_xx[np.triu_indices(n, k=1, m=n)]
+        rho_xx = np.mean(rho_xx)
+
+        # get rho_xc
+        rho_xc = np.mean(corr[:-1,-1])
+
+        # compute R
+        R = n * rho_xc / (n + n * (n-1) * rho_xx)**0.5
+
+        return R
