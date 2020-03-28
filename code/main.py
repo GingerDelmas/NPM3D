@@ -61,7 +61,7 @@ if __name__ == '__main__':
         file = ply_files[i]
         num_points_per_label = 3000
         unic_k = 20
-        tested_features="wrap" # "2D-bins", "feature-dim"
+        test = ""
 
         # load cloud
         tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}_{}'.format(i, num_points_per_label),
@@ -80,55 +80,14 @@ if __name__ == '__main__':
         ff = features_finder(tc, query_indices,
                             neighborhoods_size, eigenvalues, normals,
                             save_dir, 'features_{}'.format(i))
+        ff.features_dim()
+        ff.features_2D_bins()
 
-        if tested_features=="wrap":
-            ff.features_dim()
-            ff.features_2D_bins()
-            ft_list, ft_names = ff.prepare_features_for_ply()
-            # save result
-            filename = "cloud_wrap_{}_{}.ply".format(num_points_per_label, unic_k)
-            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
-                                        ft_names, save_dir, filename)
-
-
-        elif tested_features=="feature-dim":
-            ft_list = ff.features_dim()
-            # save result
-            filename = "cloud_ftdim_{}_{}.ply".format(num_points_per_label, unic_k)
-            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
-                                        ["linearity", "planarity", "sphericity"],
-                                        save_dir, filename)
-
-        elif tested_features=="2D-bins":
-            ft_list = ff.features_2D_bins()
-
-            # save result
-            filename = "cloud_ft2Dbins_{}_{}.ply".format(num_points_per_label, unic_k)
-            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
-                                        ["nbPtsInBin", "maxHeightDiff", "heightStd"],
-                                        save_dir, filename)
-
-        elif tested_features=="2D-features":
-            ft_list = ff.features_2D()
-
-            # save result
-            filename = "cloud_ft2D_{}_{}.ply".format(num_points_per_label, unic_k)
-            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
-                                        ["radius", "local_point_density", "sum", "ratio"],
-                                        save_dir, filename)
-
-        elif tested_features=="3D-features":
-            ft_list = ff.features_3D()
-
-            # save result
-            filename = "cloud_ft3D_{}_{}.ply".format(num_points_per_label, unic_k)
-            save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
-                                        ["absolute_height", "radius", "max_height_diff",
-                                        "height_std", "local_point_density", "verticality",
-                                        "linearity", "planarity", "sphericity",
-                                        "omnivariance", "anisotropy", "eigenentropy",
-                                        "summ", "curvature_change"],
-                                        save_dir, filename)
+        # save result
+        ft_list, ft_names = ff.prepare_features_for_ply()
+        filename = "cloud_wrap_{}_{}.ply".format(num_points_per_label, unic_k)
+        save_cloud_and_scalar_fields(tc.points[query_indices], ft_list,
+                                    ft_names, save_dir, filename)
 
     else :
         for i, file in enumerate(ply_files):
