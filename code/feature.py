@@ -65,6 +65,7 @@ class features_finder(saveable):
             - cloud, query_indices, neighborhoods_size, eigenvalues, normals : (input)
             - features : dictionary built as feature_name -> array of length len(query_indices),
                         updated when calling the methods computing the different features.
+            - selected : names of the selected features (among "features"), according to their revelance
     """
 
     def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file):
@@ -77,6 +78,7 @@ class features_finder(saveable):
         self.eigenvalues = eigenvalues
         self.normals = normals
         self.features = {}
+        self.selected = []
 
     def features_dim(self):
         """
@@ -309,7 +311,8 @@ class features_finder(saveable):
 
 
     def feature_selection(self, features_specific=None, compute_specific=False,
-                            plot_corr=False, results_dir=None, filename="corr_ft_class.png"):
+                            results_dir=None, filename_corr="corr_ft_class.png",
+                            filename_rel="relevance_cv.png"):
 
         """
         Feature selection is performed on the previously computed features
@@ -318,56 +321,99 @@ class features_finder(saveable):
 
         In :
             - features_specific : dictionary on the same model as the "features" attribute
-            - compute_specific : boolean
-            - plot_corr : whether to plot an image representing correlation between features and class.
-            - results_dir, filename : to save the figure representing correlation between features and class.
+            - compute_specific : (see previous explanation)
+            - results_dir : where to save figures (if None, it is set to self.save_dir)
+            - filename_corr : name under which saving the figure representing correlation between features and class.
+            - filename_rel : name under which saving the relevance evolution
 
         Out :
-            - the list of names of the selected features, corresponding to keys
-                of the "features" attribute (or "features_specific", depending on "compute_specific").
+            - (!) the list of names of the selected features, corresponding to keys
+                of features_specific", if "compute_specific" is set to True.
+                Otherwize, the names of selected features is stored in the attribute
+                "selected".
         """
 
-        # compute the correlation matrix between features and class label
+        # prepare ground to save results
+        if results_dir==None :
+            results_dir = self.save_dir
+
+        ### compute the correlation matrix between features and class label
         C = self.cloud.labels[self.query_indices]
 
         if compute_specific:
             names = list(features_specific.keys())+["class label"]
             M = np.vstack([features_specific[k] for k in features_specific]+[C])
-            feat2ind = {ft:i for i, ft in enumerate(features_specific)}
+            nb_features = len(features_specific)
+            ind2feat = {i:ft for i, ft in enumerate(features_specific.keys())}
         else:
             names = list(self.features.keys())+["class label"]
             M = np.vstack([self.features[k] for k in self.features]+[C])
-            feat2ind = {ft:i for i, ft in enumerate(self.features)}
-
-        ind2feat = {feat2ind[ft]:ft for ft in feat2ind}
+            nb_features = len(self.features)
+            ind2feat = {i:ft for i, ft in enumerate(self.features.keys())}
 
         corr = np.corrcoef(M)
 
-        # display the correlation matrix (code from https://medium.com/@sebastiannorena/finding-correlation-between-many-variables-multidimensional-dataset-with-python-5deb3f39ffb3)
+        ### save the correlation matrix (code from https://medium.com/@sebastiannorena/finding-correlation-between-many-variables-multidimensional-dataset-with-python-5deb3f39ffb3)
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        cax = ax.matshow(corr,cmap='coolwarm', vmin=-1, vmax=1)
+        cax = ax.matshow(corr, cmap='coolwarm', vmin=-1, vmax=1)
         fig.colorbar(cax)
+
         ticks = np.arange(0,len(names),1)
         ax.set_xticks(ticks)
         plt.xticks(rotation=90)
         ax.set_yticks(ticks)
+
         ax.set_xticklabels(names)
         ax.set_yticklabels(names)
-        # save results
-        if results_dir==None :
-            results_dir = self.save_dir
-            plt.savefig(results_dir+"/"+filename)
-        # plot the correlation matrix, if asked
-        if plot_corr:
-            plt.show()
 
-        # find what subset of features maximizes the relevance
-        # TODO
+        plt.tight_layout()
+        plt.savefig(results_dir+"/"+filename_corr)
 
-        return
+        ### order features indices in "subset" such that the first "m" elements
+        # are those maximizing the relevance for any set of "m" elements
+        relevance = []
+        subset = []
+        while len(subset) < nb_features :
 
-    def compute_relevance(corr, subset):
+            to_study = list(set(range(nb_features)).difference(set(subset)))
+
+            j_max = to_study[0]
+            r_max = self.compute_relevance(corr, subset+[j_max])
+
+            for j in to_study[1:]:
+                r = self.compute_relevance(corr, subset+[j])
+                if r > r_max:
+                    r_max = r
+                    j_max = j
+
+            subset.append(j_max)
+            relevance.append(r_max)
+
+        ### save the relevance convergence
+        fig_relevance = plt.figure()
+        ax = fig_relevance.add_subplot(111)
+        plt.plot(relevance, "-o")
+
+        ax.set_xticks(list(range(len(subset))))
+        plt.xticks(rotation=90)
+        ax.set_xticklabels([ind2feat[s] for s in subset])
+
+        plt.title("Relevance convergence")
+        plt.tight_layout()
+        plt.savefig(results_dir+"/"+filename_rel)
+
+        ### select the feature subset maximizing the relevance
+        take = np.argmax(np.array(relevance))+1
+
+        # proceed results
+        if compute_specific:
+            return [ind2feat[i] for i in subset[:take]]
+        else :
+            self.selected = [ind2feat[i] for i in subset[:take]]
+
+
+    def compute_relevance(self, corr, subset):
         """
         In :
             - corr : the correlation matrix between features and class label
@@ -383,10 +429,13 @@ class features_finder(saveable):
         subset = np.array(subset)
         R_xx = corr[subset][:,subset]
         rho_xx = R_xx[np.triu_indices(n, k=1, m=n)]
-        rho_xx = np.mean(rho_xx)
+        if len(rho_xx)==0: # case when there is only one feature in the subset
+            rho_xx = 0
+        else :
+            rho_xx = np.mean(rho_xx)
 
         # get rho_xc
-        rho_xc = np.mean(corr[:-1,-1])
+        rho_xc = np.mean(corr[subset][:,-1])
 
         # compute R
         R = n * rho_xc / (n + n * (n-1) * rho_xx)**0.5

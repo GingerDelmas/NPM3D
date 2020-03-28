@@ -60,6 +60,8 @@ class neighborhood_finder(saveable):
             - cloud : the relevant 'cloud' class
             - query_indices : indices of the points in the cloud of which we want neighborhoods
             - save_dir and save_file : see "saveable" class
+            - load_if_possible : if True, loads the previously saved version if possible
+            - k_min, k_max : values of k to study as potential neighborhood sizes for each point
 
         The different optimal neighbourhood finder methods which are:
             - k_dummy()
@@ -90,7 +92,7 @@ class neighborhood_finder(saveable):
                             and k between k_min and k_max
     """
 
-    def __init__(self, cloud, query_indices, save_dir, save_file, k_min=10, k_max=100):
+    def __init__(self, cloud, query_indices, save_dir, save_file, load_if_possible=True, k_min=10, k_max=100):
 
         # call the "saveable" class __init__()
         super().__init__(save_dir, save_file)
@@ -101,8 +103,10 @@ class neighborhood_finder(saveable):
         self.k_min = k_min
         self.k_max = k_max
 
-        # calculate all needed data
-        self.eigenvalues_tmp, self.normals_tmp = self.compute_over_k_range()
+        # if load() succeeds, skip initializing
+        if not self.load(load_if_possible):
+            # calculate all needed data
+            self.eigenvalues_tmp, self.normals_tmp = self.compute_over_k_range()
 
 
     def compute_over_k_range(self):

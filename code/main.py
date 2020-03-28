@@ -67,7 +67,8 @@ if __name__ == '__main__':
         print('Collect and preprocess training sets')
         tc = train_cloud(train_dir + '/' + file, save_dir, 'train_cloud_{}_{}'.format(i, num_points_per_label),
                         load_if_possible=True, num_points_per_label=num_points_per_label)
-        tc.save()
+        if not load:
+            tc.save()
 
         # hand sampled points
         query_indices = np.concatenate([tc.samples_indices[label] for label in tc.samples_indices.keys()])
@@ -75,7 +76,10 @@ if __name__ == '__main__':
         ### find the right neighborhood (here : fixed)
         print("Compute neighborhoods")
         nf = neighborhood_finder(tc, query_indices, save_dir, 'neighbors_{}'.format(i),
-                                k_min=unic_k, k_max=unic_k)
+                                load_if_possible=True, k_min=unic_k, k_max=unic_k)
+        if not load :
+            nf.save()
+
         neighborhoods_size, eigenvalues, normals = nf.k_dummy()
 
         ### compute features
@@ -93,8 +97,8 @@ if __name__ == '__main__':
 
         ### feature selection
         print("Do feature selection")
-        ff.feature_selection(plot_corr=True)
-
+        ff.feature_selection()
+        print("-> selected features : {}".format(ff.selected))
 
         ### save result
         if saveCloud:
