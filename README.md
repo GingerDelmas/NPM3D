@@ -10,13 +10,7 @@ by Martin Weinmann, Boris Jutzi, Stefan Hinz, Clément Mallet
 
 Ginger Delmas & Jeffery Durand
 
-**RENDEZ-VOUS**
-
-- Mardi 17 Mars après-midi
-- Samedi 21 Mars après-midi
-- Lundi 30 Mars
-
-**Datasets à checker**
+**Datasets**
 
 - OK [outdoor] : Semantic3D : http://semantic3d.net/
 - OK [indoors] : SceneNet RGBD : https://robotvault.bitbucket.io/scenenet-rgbd.html -> https://github.com/jmccormac/pySceneNetRGBD pour récupérer les labels sémantiques de NYUv2
