@@ -66,3 +66,43 @@ class classifier:
         y_pred = clf.predict(self.X_test)
         score = np.sum(y_pred == self.y_test)/len(self.y_test)
         return y_pred, score
+
+    def get_classification_statistics(self, y_pred):
+        """
+        Get statistics about what class were the most misclassified.
+        """
+        misclassified = {}
+        confused = {}
+        indices_misclassified = np.flatnonzero(self.y_test != y_pred)
+        for label in self.cloud.label_names.keys():
+            # count how many points were misclassified in this class
+            if sum(self.y_test==label)==0:
+                misclassified[label] = 100.0
+            else :
+                misclassified[label] = np.round(1 - sum(self.y_test[indices_misclassified]==label)/sum(self.y_test==label),2)*100
+            # find what is the class these points were the most classified as,
+            # and the amount of this confusion
+            lab_class = y_pred[np.flatnonzero(self.y_test==label)]
+            lab_class = lab_class[lab_class != label]
+            count_class = np.array([np.sum(lab_class==lab) for lab in self.cloud.label_names.keys()])
+            confused_class = np.argmax(count_class)
+            if len(lab_class)==0:
+                confused[label] = ["", 0]
+            else :
+                confused[label] = [self.cloud.label_names[confused_class], np.round(count_class[confused_class]/len(lab_class),2)*100]
+
+        d_name = max([len(self.cloud.label_names[label]) for label in self.cloud.label_names.keys()])+2
+        #d1 = len(str(max([misclassified.get(label, 0) for label in self.label_names.keys()])))
+        d_pts = len(str(max([len(self.cloud.test_samples_indices.get(label, [])) for label in self.cloud.label_names.keys()])))
+
+        f = "   - class {0:<%d} : {1:>5}%% correctly classified, else mainly confused with {2:>%d} (proportion : {3:>5}%%) [{4:>%d} points]" % (d_name, d_name, d_pts)
+
+        print("\nMisclassification statistics :")
+        for label in self.cloud.label_names.keys():
+            print(f.format(
+                    "'"+self.cloud.label_names[label]+"'",
+                    str(misclassified.get(label, 0))[:5],
+                    "'"+str(confused.get(label,["",0])[0])+"'",
+                    str(confused.get(label,["",0])[1])[:5],
+                    len(self.cloud.test_samples_indices.get(label, []))))
+        print("")

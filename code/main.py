@@ -113,7 +113,12 @@ if __name__ == '__main__':
 
         ### feature selection
         print("Do feature selection")
-        ff_tr.feature_selection()
+        # if not load :
+        if not load:
+            ff_tr.feature_selection()
+            ff_tr.save()
+        else :
+            ff_tr.load()
         print("... selected features : {} \n".format(ff_tr.selected))
 
         ### classify
@@ -124,6 +129,7 @@ if __name__ == '__main__':
         rf = clf.random_forest()
         y_pred, score = clf.evaluate(rf)
         print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(score,2)*100))
+        clf.get_classification_statistics(y_pred)
 
         ### save result (train set, here)
         if saveCloud:
