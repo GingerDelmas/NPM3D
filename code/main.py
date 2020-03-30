@@ -29,6 +29,7 @@ from classifier import *
 
 # specify wether some calculus must be lighten (eg : work on one cloud only)
 developpement = True
+separate_cloud = True
 
 ################################################################################
 # MAIN
@@ -48,95 +49,205 @@ if __name__ == '__main__':
 
     if developpement:
 
-        ### parameters
-        i = 0
-        file = ply_files[i]
-        nppl_train = 1000
-        nppl_test = -1
-        unic_k = 20
-        saveCloud = False
-        load = True
+        if separate_cloud: # the training and testing set come from different clouds
 
-        ### load cloud
-        print('\nCollect and preprocess cloud')
-        tc = train_test_cloud(train_dir + '/' + file, save_dir,
-                        'train_cloud_{}_tr{}_te{}'.format(i, nppl_train, nppl_test),
-                        load_if_possible=load,
-                        num_points_per_label_train=nppl_train,
-                        num_points_per_label_test=nppl_test)
+            ### parameters
+            i_tr = 1
+            i_te = 0
+            file_tr = ply_files[i_tr]
+            file_te = ply_files[i_te]
+            nppl_train = 1000
+            nppl_test = 3000
+            unic_k = 20
+            saveCloud = True
+            load = False
 
-        tc.get_split_statistics()
+            ### load cloud
+            print('\nCollect and preprocess cloud')
+            tc_tr = train_test_cloud(train_dir + '/' + file_tr, save_dir,
+                            'train_cloud_{}_tr{}'.format(i_tr, nppl_train, 0),
+                            load_if_possible=load,
+                            num_points_per_label_train=nppl_train,
+                            num_points_per_label_test=0)
 
-        if not load:
-            tc.save()
+            tc_tr.get_split_statistics()
 
-        # hand sampled points
-        train_indices = tc.hand_sampled_points(tc.train_samples_indices)
-        test_indices = tc.hand_sampled_points(tc.test_samples_indices)
+            tc_te = train_test_cloud(train_dir + '/' + file_te, save_dir,
+                            'test_cloud_{}_te{}'.format(i_te, 0, nppl_test),
+                            load_if_possible=load,
+                            num_points_per_label_train=0,
+                            num_points_per_label_test=nppl_test)
 
-        ### find the right neighborhood (here : fixed)
-        print("Compute neighborhoods\n")
-        nf_train = neighborhood_finder(tc, train_indices, save_dir, 'neighbors_train_{}_k_{}'.format(i,unic_k),
-                                load_if_possible=load, k_min=unic_k, k_max=unic_k)
-        nf_test = neighborhood_finder(tc, test_indices, save_dir, 'neighbors_test_{}_k_{}'.format(i,unic_k),
-                                load_if_possible=load, k_min=unic_k, k_max=unic_k)
-        if not load :
-            nf_train.save()
-            nf_test.save()
+            tc_te.get_split_statistics()
 
-        neighborhoods_size_tr, eigenvalues_tr, normals_tr = nf_train.k_dummy()
-        neighborhoods_size_te, eigenvalues_te, normals_te = nf_test.k_dummy()
+            if not load:
+                tc_tr.save()
+                tc_te.save()
 
-        ### compute features
-        print("Compute features\n")
-        ff_tr = features_finder(tc, train_indices,
-                            neighborhoods_size_tr, eigenvalues_tr, normals_tr,
-                            save_dir, 'features_train_{}_k_{}'.format(i, unic_k))
-        ff_te = features_finder(tc, test_indices,
-                            neighborhoods_size_te, eigenvalues_te, normals_te,
-                            save_dir, 'features_test_{}_k_{}'.format(i, unic_k))
+            # hand sampled points
+            train_indices = tc_tr.hand_sampled_points(tc_tr.train_samples_indices)
+            test_indices = tc_te.hand_sampled_points(tc_te.test_samples_indices)
 
-        if not load :
-            ff_tr.features_2D_bins()
-            ff_tr.features_2D()
-            ff_tr.features_3D()
-            ff_tr.save()
+            ### find the right neighborhood (here : fixed)
+            print("Compute neighborhoods\n")
+            nf_train = neighborhood_finder(tc_tr, train_indices, save_dir, 'neighbors_train_{}_k_{}'.format(i_tr,unic_k),
+                                    load_if_possible=load, k_min=unic_k, k_max=unic_k)
+            nf_test = neighborhood_finder(tc_te, test_indices, save_dir, 'neighbors_test_{}_k_{}'.format(i_te,unic_k),
+                                    load_if_possible=load, k_min=unic_k, k_max=unic_k)
+            if not load :
+                nf_train.save()
+                nf_test.save()
 
-            ff_te.features_2D_bins()
-            ff_te.features_2D()
-            ff_te.features_3D()
-            ff_te.save()
+            neighborhoods_size_tr, eigenvalues_tr, normals_tr = nf_train.k_dummy()
+            neighborhoods_size_te, eigenvalues_te, normals_te = nf_test.k_dummy()
+
+            ### compute features
+            ff_tr = features_finder(tc_tr, train_indices,
+                                neighborhoods_size_tr, eigenvalues_tr, normals_tr,
+                                save_dir, 'features_train_{}_k_{}'.format(i_tr, unic_k))
+            ff_te = features_finder(tc_te, test_indices,
+                                neighborhoods_size_te, eigenvalues_te, normals_te,
+                                save_dir, 'features_test_{}_k_{}'.format(i_te, unic_k))
+
+            if not load :
+                print("Compute features\n")
+                ff_tr.features_2D_bins()
+                ff_tr.features_2D()
+                ff_tr.features_3D()
+
+                ff_te.features_2D_bins()
+                ff_te.features_2D()
+                ff_te.features_3D()
+                ff_te.save()
+
+                ### feature selection
+                print("Do feature selection")
+                ff_tr.feature_selection()
+                ff_tr.save()
+
+            else :
+                ff_te.load()
+                ff_tr.load()
+
+            print("... selected features : {} \n".format(ff_tr.selected))
+
+            ### classify
+            print("Classify")
+            X_train = ff_tr.hand_features()
+            X_test = ff_te.hand_features(selected_specific=ff_tr.selected, compute_specific=True)
+            clf = classifier(tc_tr, train_indices, test_indices, X_train, X_test, test_cloud_diff=True, cloud_te=tc_te)
+            rf = clf.random_forest()
+            y_pred, score = clf.evaluate(rf)
+            print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(score,2)*100))
+            clf.get_classification_statistics(y_pred)
+
+            ### save result (train set, here)
+            if saveCloud:
+                ft_list_tr, ft_names_tr = ff_tr.prepare_features_for_ply()
+                ft_list_tr += [tc_tr.labels[train_indices]]
+                ft_names_tr += [name_of_class_label]
+                filename_tr = "cloud_wrap_train_{}_{}.ply".format(nppl_train, unic_k)
+                save_cloud_and_scalar_fields(tc_tr.points[train_indices], ft_list_tr,
+                                            ft_names_tr, results_dir, filename_tr)
+
+                ft_list_te, ft_names_te = ff_te.prepare_features_for_ply()
+                ft_list_te += [tc_te.labels[test_indices], y_pred]
+                ft_names_te += [name_of_class_label, "predicted_class"]
+                filename_te = "cloud_wrap_test_{}_{}.ply".format(nppl_test, unic_k)
+                save_cloud_and_scalar_fields(tc_te.points[test_indices], ft_list_te,
+                                            ft_names_te, results_dir, filename_te)
 
         else :
-            ff_tr.load()
-            ff_te.load()
 
-        ### feature selection
-        print("Do feature selection")
-        # if not load :
-        if not load:
-            ff_tr.feature_selection()
-            ff_tr.save()
-        else :
-            ff_tr.load()
-        print("... selected features : {} \n".format(ff_tr.selected))
+            ### parameters
+            i = 0
+            file = ply_files[i]
+            nppl_train = 1000
+            nppl_test = -1
+            unic_k = 20
+            saveCloud = False
+            load = True
 
-        ### classify
-        print("Classify")
-        X_train = ff_tr.hand_features()
-        X_test = ff_te.hand_features(selected_specific=ff_tr.selected, compute_specific=True)
-        clf = classifier(tc, train_indices, test_indices, X_train, X_test)
-        rf = clf.random_forest()
-        y_pred, score = clf.evaluate(rf)
-        print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(score,2)*100))
-        clf.get_classification_statistics(y_pred)
+            ### load cloud
+            print('\nCollect and preprocess cloud')
+            tc = train_test_cloud(train_dir + '/' + file, save_dir,
+                            'train_cloud_{}_tr{}_te{}'.format(i, nppl_train, nppl_test),
+                            load_if_possible=load,
+                            num_points_per_label_train=nppl_train,
+                            num_points_per_label_test=nppl_test)
 
-        ### save result (train set, here)
-        if saveCloud:
-            ft_list, ft_names = ff_tr.prepare_features_for_ply()
-            filename = "cloud_wrap_{}_{}.ply".format(num_points_per_label, unic_k)
-            save_cloud_and_scalar_fields(tc.points[train_indices], ft_list,
-                                        ft_names, results_dir, filename)
+            tc.get_split_statistics()
+
+            if not load:
+                tc.save()
+
+            # hand sampled points
+            train_indices = tc.hand_sampled_points(tc.train_samples_indices)
+            test_indices = tc.hand_sampled_points(tc.test_samples_indices)
+
+            ### find the right neighborhood (here : fixed)
+            print("Compute neighborhoods\n")
+            nf_train = neighborhood_finder(tc, train_indices, save_dir, 'neighbors_train_{}_k_{}'.format(i,unic_k),
+                                    load_if_possible=load, k_min=unic_k, k_max=unic_k)
+            nf_test = neighborhood_finder(tc, test_indices, save_dir, 'neighbors_test_{}_k_{}'.format(i,unic_k),
+                                    load_if_possible=load, k_min=unic_k, k_max=unic_k)
+            if not load :
+                nf_train.save()
+                nf_test.save()
+
+            neighborhoods_size_tr, eigenvalues_tr, normals_tr = nf_train.k_dummy()
+            neighborhoods_size_te, eigenvalues_te, normals_te = nf_test.k_dummy()
+
+            ### compute features
+            print("Compute features\n")
+            ff_tr = features_finder(tc, train_indices,
+                                neighborhoods_size_tr, eigenvalues_tr, normals_tr,
+                                save_dir, 'features_train_{}_k_{}'.format(i, unic_k))
+            ff_te = features_finder(tc, test_indices,
+                                neighborhoods_size_te, eigenvalues_te, normals_te,
+                                save_dir, 'features_test_{}_k_{}'.format(i, unic_k))
+
+            if not load :
+                ff_tr.features_2D_bins()
+                ff_tr.features_2D()
+                ff_tr.features_3D()
+                ff_tr.save()
+
+                ff_te.features_2D_bins()
+                ff_te.features_2D()
+                ff_te.features_3D()
+                ff_te.save()
+
+            else :
+                ff_tr.load()
+                ff_te.load()
+
+            ### feature selection
+            print("Do feature selection")
+            # if not load :
+            if not load:
+                ff_tr.feature_selection()
+                ff_tr.save()
+            else :
+                ff_tr.load()
+            print("... selected features : {} \n".format(ff_tr.selected))
+
+            ### classify
+            print("Classify")
+            X_train = ff_tr.hand_features()
+            X_test = ff_te.hand_features(selected_specific=ff_tr.selected, compute_specific=True)
+            clf = classifier(tc, train_indices, test_indices, X_train, X_test)
+            rf = clf.random_forest()
+            y_pred, score = clf.evaluate(rf)
+            print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(score,2)*100))
+            clf.get_classification_statistics(y_pred)
+
+            ### save result (train set, here)
+            if saveCloud:
+                ft_list, ft_names = ff_tr.prepare_features_for_ply()
+                filename = "cloud_wrap_train_{}_{}.ply".format(nppl_train, unic_k)
+                save_cloud_and_scalar_fields(tc.points[train_indices], ft_list,
+                                            ft_names, results_dir, filename)
 
     else :
         for i, file in enumerate(ply_files):
