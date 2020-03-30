@@ -52,20 +52,20 @@ if __name__ == '__main__':
         i = 0
         file = ply_files[i]
         nppl_train = 1000
-        nppl_test = 3000
+        nppl_test = -1
         unic_k = 20
         saveCloud = False
         load = True
 
         ### load cloud
-        print('Collect and preprocess training sets')
+        print('\nCollect and preprocess cloud')
         tc = train_test_cloud(train_dir + '/' + file, save_dir,
                         'train_cloud_{}_tr{}_te{}'.format(i, nppl_train, nppl_test),
                         load_if_possible=load,
                         num_points_per_label_train=nppl_train,
                         num_points_per_label_test=nppl_test)
 
-        tc.get_statistics()
+        tc.get_split_statistics()
 
         if not load:
             tc.save()
@@ -75,10 +75,10 @@ if __name__ == '__main__':
         test_indices = tc.hand_sampled_points(tc.test_samples_indices)
 
         ### find the right neighborhood (here : fixed)
-        print("Compute neighborhoods")
-        nf_train = neighborhood_finder(tc, train_indices, save_dir, 'neighbors_train_{}'.format(i),
+        print("Compute neighborhoods\n")
+        nf_train = neighborhood_finder(tc, train_indices, save_dir, 'neighbors_train_{}_k_{}'.format(i,unic_k),
                                 load_if_possible=load, k_min=unic_k, k_max=unic_k)
-        nf_test = neighborhood_finder(tc, test_indices, save_dir, 'neighbors_test_{}'.format(i),
+        nf_test = neighborhood_finder(tc, test_indices, save_dir, 'neighbors_test_{}_k_{}'.format(i,unic_k),
                                 load_if_possible=load, k_min=unic_k, k_max=unic_k)
         if not load :
             nf_train.save()
@@ -88,21 +88,23 @@ if __name__ == '__main__':
         neighborhoods_size_te, eigenvalues_te, normals_te = nf_test.k_dummy()
 
         ### compute features
-        print("Compute features")
+        print("Compute features\n")
         ff_tr = features_finder(tc, train_indices,
                             neighborhoods_size_tr, eigenvalues_tr, normals_tr,
-                            save_dir, 'features_train_{}'.format(i))
+                            save_dir, 'features_train_{}_k_{}'.format(i, unic_k))
         ff_te = features_finder(tc, test_indices,
                             neighborhoods_size_te, eigenvalues_te, normals_te,
-                            save_dir, 'features_test_{}'.format(i))
+                            save_dir, 'features_test_{}_k_{}'.format(i, unic_k))
 
         if not load :
-            ff_tr.features_dim()
             ff_tr.features_2D_bins()
+            ff_tr.features_2D()
+            ff_tr.features_3D()
             ff_tr.save()
 
-            ff_te.features_dim()
             ff_te.features_2D_bins()
+            ff_te.features_2D()
+            ff_te.features_3D()
             ff_te.save()
 
         else :
@@ -112,7 +114,7 @@ if __name__ == '__main__':
         ### feature selection
         print("Do feature selection")
         ff_tr.feature_selection()
-        print("... selected features : {}".format(ff_tr.selected))
+        print("... selected features : {} \n".format(ff_tr.selected))
 
         ### classify
         print("Classify")
@@ -121,7 +123,7 @@ if __name__ == '__main__':
         clf = classifier(tc, train_indices, test_indices, X_train, X_test)
         rf = clf.random_forest()
         y_pred, score = clf.evaluate(rf)
-        print("... evaluation : {}% of points from the testing set were correctly classified.".format(np.round(score,2)*100))
+        print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(score,2)*100))
 
         ### save result (train set, here)
         if saveCloud:

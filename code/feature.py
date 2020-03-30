@@ -249,6 +249,7 @@ class features_finder(saveable):
         self.features["verticality"] = verticality
         self.features["linearity"] = linearity
         self.features["planarity"] = planarity
+        self.features["sphericity"] = sphericity
         self.features["omnivariance"] = omnivariance
         self.features["anisotropy"] = anisotropy
         self.features["eigenentropy"] = eigenentropy

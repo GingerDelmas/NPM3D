@@ -10,7 +10,7 @@ Jeffery Durand and Ginger Delmas
 ################################
 
 Classifier file : here is defined everything to classify points :
-
+    - class classifier
 """
 
 ################################################################################

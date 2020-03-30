@@ -48,6 +48,10 @@ class cloud(saveable):
             - labels : array of size (number of points), containing the labels for each point
             - tree : KDTree based on "points"
 
+        Methods :
+            - fetch_points
+            - get_statistics
+
     """
 
     def __init__(self, ply_path, save_dir, save_file):
@@ -101,9 +105,9 @@ class train_test_cloud(cloud):
             - ply_path, save_dir, and save_file: see "cloud" class
             - load_if_possible : if True, loads the previously saved version if possible
             - num_points_per_label_train : number of points to randomly sample per labeled class
-                                           for the train set
-            - num_points_per_label_test : idem, but for the test set
-
+                                           for the train set. If it is "-1", all points are sampled.
+            - num_points_per_label_test : idem, but for the test set. If it is "-1",
+                                          all remaining points after the train sampling are sampled.
         Attributes :
             - train_samples_indices : dictionary linking labels to indices (in the cloud)
                                         of the randomly sampled points for the train set
@@ -112,6 +116,7 @@ class train_test_cloud(cloud):
         Methods :
             - sample_n_points_per_label
             - hand_sampled_points
+            - get_split_statistics
     """
 
     def __init__(self, ply_path, save_dir, save_file, load_if_possible=True,
@@ -135,7 +140,8 @@ class train_test_cloud(cloud):
                 2) avoid bias more common classes
 
             In :
-                - num_points_per_label : number of points to sample
+                - num_points_per_label : number of points to sample per label. If value is "-1",
+                                         all (remaining) points are sampled.
                 - train : whether the sampling is performed for the train set.
                 - test : whether the sampling is for the test set
                          If True, points used for the train set are not samplable.
@@ -162,13 +168,15 @@ class train_test_cloud(cloud):
             if test : # don't consider points that were already sampled for the train set
                 label_indices = set(label_indices).difference(set(self.train_samples_indices[label]))
                 label_indices = np.array(list(label_indices)).astype(int)
-
-            try:
-                sampled_indices = np.random.choice(label_indices, num_points_per_label, replace=False)
-            except ValueError:
+            if num_points_per_label==-1: # take all points
                 sampled_indices = label_indices
-                print("Warning: class '{}' only has {}/{} points (left)".format(
-                    self.label_names[label], len(label_indices), num_points_per_label))
+            else : # sample
+                try:
+                    sampled_indices = np.random.choice(label_indices, num_points_per_label, replace=False)
+                except ValueError:
+                    sampled_indices = label_indices
+                    print("Warning: class '{}' only has {}/{} points".format(
+                        self.label_names[label], len(label_indices), num_points_per_label))
 
             samples_indices[label] = sampled_indices
 
@@ -182,3 +190,29 @@ class train_test_cloud(cloud):
 
         return np.concatenate([samples_indices[label]
                                         for label in samples_indices.keys()])
+
+    def get_split_statistics(self):
+        """
+        Get statistics about the number of element per class in both the training
+        and testing set.
+        """
+
+        d0 = max([len(self.label_names[label]) for label in self.label_names.keys()])+2
+        d1 = max([len(self.train_samples_indices.get(label, [])) for label in self.label_names.keys()])
+        d2 = max([len(self.test_samples_indices.get(label, [])) for label in self.label_names.keys()])
+        d3 = max([len(np.flatnonzero(self.labels == label)) for label in self.label_names.keys()])
+
+        d1 = len(str(d1))
+        d2 = len(str(d2))
+        d3 = len(str(d3))
+
+        f = "   - class {0:<%d} : {1:>%d} (training), {2:>%d} (testing), {3:>%d} (total)" % (d0, d1, d2, d3)
+
+        print("\nSplit statistics :")
+        for label in self.label_names.keys():
+            print(f.format(
+                    "'"+self.label_names[label]+"'",
+                    len(self.train_samples_indices.get(label, [])),
+                    len(self.test_samples_indices.get(label, [])),
+                    len(np.flatnonzero(self.labels == label))))
+        print("")
