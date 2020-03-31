@@ -104,26 +104,31 @@ if __name__ == '__main__':
             ### compute features
             ff_tr = features_finder(tc_tr, train_indices,
                                 neighborhoods_size_tr, eigenvalues_tr, normals_tr,
-                                save_dir, 'features_train_{}_k_{}'.format(i_tr, unic_k))
+                                save_dir, 'features_train_{}_k_{}'.format(i_tr, unic_k),
+                                save_norm=True, use_norm=False, norm=None)
             ff_te = features_finder(tc_te, test_indices,
                                 neighborhoods_size_te, eigenvalues_te, normals_te,
-                                save_dir, 'features_test_{}_k_{}'.format(i_te, unic_k))
+                                save_dir, 'features_test_{}_k_{}'.format(i_te, unic_k),
+                                save_norm=False, use_norm=True, norm=ff_tr.ft_norm)
 
             if not load :
-                print("Compute features\n")
+                print("Compute training features\n")
                 ff_tr.features_2D_bins()
                 ff_tr.features_2D()
                 ff_tr.features_3D()
 
+                ### feature selection
+                print("Do feature selection")
+                ff_tr.feature_selection()
+                print("... selected features : {} \n".format(ff_tr.selected))
+                ff_tr.save()
+
+                print("Compute testing features\n")
+                ff_te.norm = ff_tr.ft_norm # use normalization from the training set
                 ff_te.features_2D_bins()
                 ff_te.features_2D()
                 ff_te.features_3D()
                 ff_te.save()
-
-                ### feature selection
-                print("Do feature selection")
-                ff_tr.feature_selection()
-                ff_tr.save()
 
             else :
                 ff_te.load()
