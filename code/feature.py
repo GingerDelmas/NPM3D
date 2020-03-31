@@ -60,15 +60,17 @@ class features_finder(saveable):
             - prepare_features_for_ply()
             - feature_selection()
             - compute_relevance() (used in feature_selection)
+            - normalize_feature()
 
         Attributes :
             - cloud, query_indices, neighborhoods_size, eigenvalues, normals : (input)
             - features : dictionary built as feature_name -> array of length len(query_indices),
                         updated when calling the methods computing the different features.
             - selected : names of the selected features (among "features"), according to their revelance
+            - save_norm, use_norm, norm : see method "normalize_features"
     """
 
-    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file):
+    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file, save_norm=True, use_norm=False, norm=None):
         # call the "saveable" class __init__()
         super().__init__(save_dir, save_file)
 
@@ -79,6 +81,38 @@ class features_finder(saveable):
         self.normals = normals
         self.features = {}
         self.selected = []
+        self.ft_norm = {}
+        self.save_norm = save_norm
+        self.use_norm = use_norm
+        self.norm = norm
+
+    def normalize_feature(self, y, name_ft=None, save_norm=None, use_norm=None, norm=None):
+        """
+        Normalize a feature vector y to map it into [0,1].
+
+        In :
+            - save_norm : if set to True, the values used to normalize are saved in
+                            the "ft_norm" attribute, under the key "name_ft".
+            - use_norm : if set to True, normalization is proceed with values stored
+                            in "norm" under the key "name_ft".
+            - norm : dictionary in the same format as the "ft_norm" attribute : "feature" -> [min, max]
+            - name_ft : name of the feature to look for in "ft_norm" or in "norm"
+        """
+
+        if (save_norm is None) and (use_norm is None):
+            save_norm = self.save_norm
+            use_norm = self.use_norm
+            norm = self.norm
+
+        if use_norm:
+            [a,b] = norm[name_ft]
+        else :
+            a, b = np.min(y), np.max(y)
+
+        if save_norm:
+            self.ft_norm[name_ft] = [a,b]
+
+        return (y - a) / (b - a)
 
     def features_dim(self):
         """
@@ -95,9 +129,9 @@ class features_finder(saveable):
         sphericity = lbda3 / (lbda1 + eps) # = scattering
 
         # update the feature dictioary
-        self.features["linearity"] = linearity
-        self.features["planarity"] = planarity
-        self.features["sphericity"] = sphericity
+        self.features["linearity"] = self.normalize_feature(linearity, "linearity")
+        self.features["planarity"] = self.normalize_feature(planarity, "planarity")
+        self.features["sphericity"] = self.normalize_feature(sphericity, "sphericity")
 
         return [linearity, planarity, sphericity]
 
@@ -154,10 +188,10 @@ class features_finder(saveable):
         ratio = lbda2 / lbda1
 
         # update the feature dictioary
-        self.features["radius_2D"] = radius
-        self.features["local_point_density_2D"] = local_point_density
-        self.features["eigen_sum_2D"] = summ
-        self.features["eigen_ratio_2D"] = ratio
+        self.features["radius_2D"] = self.normalize_feature(radius, "radius_2D")
+        self.features["local_point_density_2D"] = self.normalize_feature(local_point_density, "local_point_density_2D")
+        self.features["eigen_sum_2D"] = self.normalize_feature(summ, "eigen_sum_2D")
+        self.features["eigen_ratio_2D"] = self.normalize_feature(ratio, "eigen_ratio_2D")
 
         return [radius, local_point_density, summ, ratio]
 
@@ -241,20 +275,20 @@ class features_finder(saveable):
         curvature_change = e3 / (e1 + e2 + e3 + eps)
 
         # update the feature dictioary
-        self.features["absolute_height"] = absolute_height
-        self.features["radius_3D"] = radius
-        self.features["max_height_diff_3D"] = max_height_diff
-        self.features["height_std_3D"] = height_std
-        self.features["local_point_density_3D"] = local_point_density
-        self.features["verticality"] = verticality
-        self.features["linearity"] = linearity
-        self.features["planarity"] = planarity
-        self.features["sphericity"] = sphericity
-        self.features["omnivariance"] = omnivariance
-        self.features["anisotropy"] = anisotropy
-        self.features["eigenentropy"] = eigenentropy
-        self.features["eigen_sum_3D"] = summ
-        self.features["curvature_change"] = curvature_change
+        self.features["absolute_height"] = self.normalize_feature(absolute_height, "absolute_height")
+        self.features["radius_3D"] = self.normalize_feature(radius, "radius_3D")
+        self.features["max_height_diff_3D"] = self.normalize_feature(max_height_diff, "max_height_diff_3D")
+        self.features["height_std_3D"] = self.normalize_feature(height_std, "height_std_3D")
+        self.features["local_point_density_3D"] = self.normalize_feature(local_point_density, "local_point_density_3D")
+        self.features["verticality"] = self.normalize_feature(verticality, "verticality")
+        self.features["linearity"] = self.normalize_feature(linearity, "linearity")
+        self.features["planarity"] = self.normalize_feature(planarity, "planarity")
+        self.features["sphericity"] = self.normalize_feature(sphericity, "sphericity")
+        self.features["omnivariance"] = self.normalize_feature(omnivariance, "omnivariance")
+        self.features["anisotropy"] = self.normalize_feature(anisotropy, "anisotropy")
+        self.features["eigenentropy"] = self.normalize_feature(eigenentropy, "eigenentropy")
+        self.features["eigen_sum_3D"] = self.normalize_feature(summ, "eigen_sum_3D")
+        self.features["curvature_change"] = self.normalize_feature(curvature_change, "curvature_change")
 
         return [absolute_height, radius, max_height_diff, height_std, local_point_density, verticality, linearity, planarity, sphericity, omnivariance,anisotropy, eigenentropy, summ, curvature_change]
 
@@ -291,9 +325,9 @@ class features_finder(saveable):
                                 for i,ind_q in enumerate(ind)])
 
         # update the feature dictioary
-        self.features["nb_points_in_bin"] = nb_points_in_bin
-        self.features["max_height_diff_2D"] = max_height_diff
-        self.features["height_std_2D"] = height_std
+        self.features["nb_points_in_bin"] = self.normalize_feature(nb_points_in_bin, "nb_points_in_bin")
+        self.features["max_height_diff_2D"] = self.normalize_feature(max_height_diff, "max_height_diff_2D")
+        self.features["height_std_2D"] = self.normalize_feature(height_std, "height_std_2D")
 
         return [nb_points_in_bin, max_height_diff, height_std]
 
@@ -339,7 +373,7 @@ class features_finder(saveable):
             results_dir = self.save_dir
 
         ### compute the correlation matrix between features and class label
-        C = self.cloud.labels[self.query_indices]
+        C = self.normalize_feature(self.cloud.labels[self.query_indices], "class_label")
 
         if compute_specific:
             names = list(features_specific.keys())+["class label"]
@@ -400,7 +434,8 @@ class features_finder(saveable):
         plt.xticks(rotation=90)
         ax.set_xticklabels([ind2feat[s] for s in subset])
 
-        plt.title("Relevance convergence")
+        plt.title("Relevance evolution depending on selected features")
+        plt.xlabel("New selected feature at each step")
         plt.tight_layout()
         plt.savefig(results_dir+"/"+filename_rel)
 

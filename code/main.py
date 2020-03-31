@@ -29,7 +29,7 @@ from classifier import *
 
 # specify wether some calculus must be lighten (eg : work on one cloud only)
 developpement = True
-separate_cloud = True
+separate_cloud = False
 
 ################################################################################
 # MAIN
@@ -160,13 +160,13 @@ if __name__ == '__main__':
         else :
 
             ### parameters
-            i = 0
+            i = 1
             file = ply_files[i]
             nppl_train = 1000
-            nppl_test = -1
+            nppl_test = 3000
             unic_k = 20
-            saveCloud = False
-            load = True
+            saveCloud = True
+            load = False
 
             ### load cloud
             print('\nCollect and preprocess cloud')
@@ -199,38 +199,37 @@ if __name__ == '__main__':
             neighborhoods_size_te, eigenvalues_te, normals_te = nf_test.k_dummy()
 
             ### compute features
-            print("Compute features\n")
             ff_tr = features_finder(tc, train_indices,
                                 neighborhoods_size_tr, eigenvalues_tr, normals_tr,
-                                save_dir, 'features_train_{}_k_{}'.format(i, unic_k))
+                                save_dir, 'features_train_{}_k_{}'.format(i, unic_k),
+                                save_norm=True, use_norm=False, norm=None)
             ff_te = features_finder(tc, test_indices,
                                 neighborhoods_size_te, eigenvalues_te, normals_te,
-                                save_dir, 'features_test_{}_k_{}'.format(i, unic_k))
+                                save_dir, 'features_test_{}_k_{}'.format(i, unic_k),
+                                save_norm=False, use_norm=True, norm=ff_tr.ft_norm)
 
             if not load :
+                print("Compute training features\n")
                 ff_tr.features_2D_bins()
                 ff_tr.features_2D()
                 ff_tr.features_3D()
+
+                ### feature selection
+                print("Do feature selection")
+                ff_tr.feature_selection()
+                print("... selected features : {} \n".format(ff_tr.selected))
                 ff_tr.save()
 
+                print("Compute testing features\n")
+                ff_te.norm = ff_tr.ft_norm # use normalization from the training set
                 ff_te.features_2D_bins()
                 ff_te.features_2D()
                 ff_te.features_3D()
                 ff_te.save()
 
             else :
-                ff_tr.load()
                 ff_te.load()
-
-            ### feature selection
-            print("Do feature selection")
-            # if not load :
-            if not load:
-                ff_tr.feature_selection()
-                ff_tr.save()
-            else :
                 ff_tr.load()
-            print("... selected features : {} \n".format(ff_tr.selected))
 
             ### classify
             print("Classify")
@@ -242,10 +241,11 @@ if __name__ == '__main__':
             print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(score,2)*100))
             clf.get_classification_statistics(y_pred)
 
-            ### save result (train set, here)
             if saveCloud:
                 ft_list, ft_names = ff_tr.prepare_features_for_ply()
-                filename = "cloud_wrap_train_{}_{}.ply".format(nppl_train, unic_k)
+                ft_list += [tc.labels[train_indices], tc.labels[test_indices], y_pred]
+                ft_names += [name_of_class_label, "ground_truth_test", "predicted_class"]
+                filename = "cloud_wrap_{}_{}.ply".format(nppl_train, unic_k)
                 save_cloud_and_scalar_fields(tc.points[train_indices], ft_list,
                                             ft_names, results_dir, filename)
 
