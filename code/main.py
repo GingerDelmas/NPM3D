@@ -165,8 +165,16 @@ if __name__ == '__main__':
         else :
 
             ### parameters
-            i = 1
-            file = ply_files[i]
+            i = "bildstein"
+            fileName = "bildstein_station5_xyz_intensity_rgb"
+            cloud_path = "../../NPM3D_local_files/data/semantic-8/{}.txt".format(fileName)
+            label_path = "../../NPM3D_local_files/data/semantic-8/sem8_labels_training/{}.labels".format(fileName)
+            file_type = "txt"
+
+            # i = 1
+            # cloud_path = train_dir + '/' + ply_files[i]
+            # file_type = "ply"
+
             nppl_train = 1000
             nppl_test = 3000
             unic_k = 20
@@ -175,8 +183,11 @@ if __name__ == '__main__':
 
             ### load cloud
             print('\nCollect and preprocess cloud')
-            tc = train_test_cloud(train_dir + '/' + file, save_dir,
+            tc = train_test_cloud(cloud_path,
+                            save_dir,
                             'train_cloud_{}_tr{}_te{}'.format(i, nppl_train, nppl_test),
+                            file_type=file_type,
+                            label_path=label_path,
                             load_if_possible=load,
                             num_points_per_label_train=nppl_train,
                             num_points_per_label_test=nppl_test)

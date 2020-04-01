@@ -20,6 +20,7 @@ Cloud environment file : here is defined everything that deals directly with the
 
 import numpy as np
 from sklearn.neighbors import KDTree
+from tqdm import tqdm
 
 from utils import *
 
@@ -37,13 +38,15 @@ name_of_class_label = "scalar_class"
 class cloud(saveable):
     """
         Basic class for a point cloud. Takes:
-            - ply_path : the path to the .ply file containing the cloud
+            - cloud_path : the path to the .ply or .txt file containing the cloud
+            - label_path : the path to the .labels file containing the labels, if any
             - save_dir and save_file : see "saveable" class
             - include_labels : boolean indicating if we should (or can) take labels
 
         Attributes:
             - label_names : [hard coded] name of the different admitted labels
-            - ply_path : (as input)
+            - cloud_path : (as input)
+            - label_path : (as input)
             - points : matrix of size (number of points , 3) containing the coordinates of each point
             - labels : array of size (number of points), containing the labels for each point
             - tree : KDTree based on "points"
@@ -54,29 +57,67 @@ class cloud(saveable):
 
     """
 
-    def __init__(self, ply_path, save_dir, save_file):
+    def __init__(self, cloud_path, save_dir, save_file, label_path=None):
 
         # call the "saveable" class __init__()
         super().__init__(save_dir, save_file)
 
         # the set categories of the data
-        self.label_names = {0: 'Unclassified',
-                            1: 'Ground',
-                            2: 'Building',
-                            3: 'Poles',
-                            4: 'Pedestrians',
-                            5: 'Cars',
-                            6: 'Vegetation'}
+        self.label_names = {0: 'Unclassified'}
 
         # save path to ply file
-        self.ply_path = ply_path
+        self.cloud_path = cloud_path
+        self.label_path = label_path
 
 
-    def fetch_points(self, include_labels: bool):
-        # read the ply file and store content
-        cloud_ply = read_ply(self.ply_path)
-        self.points = np.vstack((cloud_ply['x'], cloud_ply['y'], cloud_ply['z'])).T
-        if include_labels: self.labels = cloud_ply[name_of_class_label]
+    def fetch_points(self, include_labels: bool, file_type="ply"):
+        if file_type=="ply":
+            self.label_names = {0: 'Unclassified',
+                                1: 'Ground',
+                                2: 'Building',
+                                3: 'Poles',
+                                4: 'Pedestrians',
+                                5: 'Cars',
+                                6: 'Vegetation'}
+
+            # read the ply file and store content
+            cloud_ply = read_ply(self.cloud_path)
+            self.points = np.vstack((cloud_ply['x'], cloud_ply['y'], cloud_ply['z'])).T
+            if include_labels: self.labels = cloud_ply[name_of_class_label]
+
+        elif file_type=="txt":
+            self.label_names = {0: 'Unclassified',
+                                1: 'Ground',
+                                2: 'Hard_scape',
+                                3: 'Vegetation',
+                                4: 'Cars',
+                                5: 'Buildings'}
+
+            if include_labels:
+                # load labels
+                f = open(self.label_path, "r")
+                labels = f.read().splitlines()
+                f.close()
+                self.labels = np.array(labels).astype(int)
+
+                # aggregate classes
+                self.labels[self.labels==7] = 0 # scanning_artefacts -> Unclassified
+                self.labels[self.labels==4] = 3 # high_vegetation, low_vegetation -> vegetation
+                self.labels[self.labels==2] = 1 # natural_terrain, man-made_terrain -> ground
+
+                # arange correctly the class id
+                self.labels[self.labels==6] = 2
+                self.labels[self.labels==8] = 4
+
+            # load points
+            f = open(self.cloud_path, "r")
+            content = f.read().splitlines()
+            f.close()
+
+            self.points = np.zeros((len(content),3))
+            for i,p in tqdm(enumerate(content)):
+                self.points[i] = np.array(p.split(" ")[:3]).astype("float")
+
         # make the KD Tree
         self.tree = KDTree(self.points)
 
@@ -102,7 +143,7 @@ class cloud(saveable):
 class train_test_cloud(cloud):
     """
         Basic class for a training point cloud, deriving from the cloud class. Takes:
-            - ply_path, save_dir, and save_file: see "cloud" class
+            - cloud_path, label_path, save_dir, and save_file: see "cloud" class
             - load_if_possible : if True, loads the previously saved version if possible
             - num_points_per_label_train : number of points to randomly sample per labeled class
                                            for the train set. If it is "-1", all points are sampled.
@@ -119,16 +160,16 @@ class train_test_cloud(cloud):
             - get_split_statistics
     """
 
-    def __init__(self, ply_path, save_dir, save_file, load_if_possible=True,
+    def __init__(self, cloud_path, save_dir, save_file, file_type="ply", label_path=None, load_if_possible=True,
                  num_points_per_label_train=500, num_points_per_label_test=500):
 
         # call the "cloud" class __init__()
-        super().__init__(ply_path, save_dir, save_file)
+        super().__init__(cloud_path, save_dir, save_file, label_path)
 
         # if load() succeeds, skip initializing
         if not self.load(load_if_possible):
             # include labels since this is the train set
-            self.fetch_points(include_labels=True)
+            self.fetch_points(include_labels=True, file_type=file_type)
             self.train_samples_indices = self.sample_n_points_per_label(num_points_per_label_train, train=True)
             self.test_samples_indices = self.sample_n_points_per_label(num_points_per_label_test, test=True)
 
