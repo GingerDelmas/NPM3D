@@ -125,10 +125,12 @@ class neighborhood_finder(saveable):
         # empty containers for the output
         eigenvalues = np.empty((len(self.query_indices), self.k_max - self.k_min + 1, 3))
         normals = np.empty((len(self.query_indices), self.k_max - self.k_min + 1, 3))
-
+        
+        print('Trying k values from {} to {}. Completed:'.format(self.k_min, self.k_max))
         for k in range(self.k_min, self.k_max+1): # this includes calculus for k = k_max
             knns = self.cloud.tree.query(self.cloud.points[self.query_indices], k, return_distance=False)
             eigenvalues[:,k-self.k_min,:], normals[:,k-self.k_min,:] = self.local_PCA(knns)
+            print('k = {}'.format(k))
 
         return eigenvalues, normals
 
@@ -166,7 +168,7 @@ class neighborhood_finder(saveable):
 
     def k_dummy(self):
         """
-        Returns an array full of a unic k value.
+        Returns an array full of a unique k value.
         """
         neighborhoods_size = np.ones(len(self.query_indices), dtype="uint8")*self.k_min
         eigenvalues = self.eigenvalues_tmp[:,0,:]
@@ -174,43 +176,56 @@ class neighborhood_finder(saveable):
 
         return neighborhoods_size, eigenvalues, normals
 
-    def k_critical_curvature(self): # TODO
+    def k_critical_curvature(self):
         """
             k maximizing the change in curvature C = l3 / (l1 + l2 + l3)
             where li is the ith biggest eigenvalue of the structure tensor
-        """
-
-        # TO IMPLEMENT
-        neighborhoods_size = np.ones(len(query_points), dtype="uint8")
-        eigenvalues = np.zeros((len(self.query_indices), 3))
-        normals = np.zeros((len(self.query_indices), 3))
-
+        """ 
+        # find the best k for each query 
+        curvatures = self.eigenvalues_tmp[...,2] / np.sum(self.eigenvalues_tmp, axis=2)
+        bestk = np.argmax(curvatures, axis=1)
+        
+        # deduce the outputs
+        neighborhoods_size = (bestk + self.k_min).astype("uint8")
+        eigenvalues = self.eigenvalues_tmp[range(len(bestk)),bestk,:]
+        normals = self.normals_tmp[range(len(bestk)),bestk,:]
+        
         return neighborhoods_size, eigenvalues, normals
 
 
-    def k_min_shannon_entropy(self): # TODO
+    def k_min_shannon_entropy(self):
         """
             k minimizing the entropy Edim = - L*ln(L) - P*ln(P) - S*ln(S)
             where L, P and S are the linearity, planarity and sphericity
         """
-
-        # TO IMPLEMENT
-        neighborhoods_size = np.ones(len(query_points), dtype="uint8")
-        eigenvalues = np.zeros((len(self.query_indices), 3))
-        normals = np.zeros((len(self.query_indices), 3))
+        # find the best k for each query
+        L = (self.eigenvalues_tmp[...,0] - self.eigenvalues_tmp[...,1]) / self.eigenvalues_tmp[...,0]
+        P = (self.eigenvalues_tmp[...,1] - self.eigenvalues_tmp[...,2]) / self.eigenvalues_tmp[...,0]
+        S = self.eigenvalues_tmp[...,2] / self.eigenvalues_tmp[...,0]
+        entropy = - L * np.log(L) - P * np.log(P) - S * np.log(S)
+        bestk = np.argmin(entropy, axis=1)
+        
+        # deduce the outputs
+        neighborhoods_size = (bestk + self.k_min).astype("uint8")
+        eigenvalues = self.eigenvalues_tmp[range(len(bestk)),bestk,:]
+        normals = self.normals_tmp[range(len(bestk)),bestk,:]
 
         return neighborhoods_size, eigenvalues, normals
 
 
-    def k_min_eigenentopy(self): # TODO
+    def k_min_eigenentopy(self):
         """
             k minimizing the entropy El = - e1*ln(e1) - e2*ln(e2) - e2*ln(e2)
             where ei is the normalized ith biggest eigenvalue of the structure tensor
         """
 
-        # TO IMPLEMENT
-        neighborhoods_size = np.ones(len(query_points), dtype="uint8")
-        eigenvalues = np.zeros((len(self.query_indices), 3))
-        normals = np.zeros((len(self.query_indices), 3))
+        # find the best k for each query
+        entropy =  - np.sum(self.eigenvalues_tmp * np.log(self.eigenvalues_tmp), axis=2)
+        bestk = np.argmin(entropy, axis=1)
+        
+        # deduce the outputs
+        neighborhoods_size = (bestk + self.k_min).astype("uint8")
+        eigenvalues = self.eigenvalues_tmp[range(len(bestk)),bestk,:]
+        normals = self.normals_tmp[range(len(bestk)),bestk,:]
 
         return neighborhoods_size, eigenvalues, normals

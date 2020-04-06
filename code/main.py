@@ -165,15 +165,16 @@ if __name__ == '__main__':
         else :
 
             ### parameters
-            i = "bildstein"
-            fileName = "bildstein_station5_xyz_intensity_rgb"
-            cloud_path = "../../NPM3D_local_files/data/semantic-8/{}.txt".format(fileName)
-            label_path = "../../NPM3D_local_files/data/semantic-8/sem8_labels_training/{}.labels".format(fileName)
-            file_type = "txt"
+            # i = "bildstein"
+            # fileName = "bildstein_station5_xyz_intensity_rgb"
+            # cloud_path = "../../NPM3D_local_files/data/semantic-8/{}.txt".format(fileName)
+            # label_path = "../../NPM3D_local_files/data/semantic-8/sem8_labels_training/{}.labels".format(fileName)
+            # file_type = "txt"
 
-            # i = 1
-            # cloud_path = train_dir + '/' + ply_files[i]
-            # file_type = "ply"
+            i = 1
+            cloud_path = train_dir + '/' + ply_files[i]
+            label_path = None
+            file_type = "ply"
 
             nppl_train = 1000
             nppl_test = 3000
@@ -202,18 +203,33 @@ if __name__ == '__main__':
             test_indices = tc.hand_sampled_points(tc.test_samples_indices)
 
             ### find the right neighborhood (here : fixed)
-            print("Compute neighborhoods\n")
-            nf_train = neighborhood_finder(tc, train_indices, save_dir, 'neighbors_train_{}_k_{}'.format(i,unic_k),
-                                    load_if_possible=load, k_min=unic_k, k_max=unic_k)
-            nf_test = neighborhood_finder(tc, test_indices, save_dir, 'neighbors_test_{}_k_{}'.format(i,unic_k),
-                                    load_if_possible=load, k_min=unic_k, k_max=unic_k)
+            #print("Compute neighborhoods\n")
+            #nf_train = neighborhood_finder(tc, train_indices, save_dir, 'neighbors_train_{}_k_{}'.format(i,unic_k),
+            #                        load_if_possible=load, k_min=unic_k, k_max=unic_k)
+            #nf_test = neighborhood_finder(tc, test_indices, save_dir, 'neighbors_test_{}_k_{}'.format(i,unic_k),
+            #                        load_if_possible=load, k_min=unic_k, k_max=unic_k)
+            
+            ### find the right neighborhood (here : variable)
+            print("Computing neighborhoods\n")
+            k_min = 10
+            k_max = 100
+            print("Train cloud : ", end='')
+            nf_train = neighborhood_finder(tc, train_indices, save_dir, 'neighbors_train_{}_k_{}to{}'.format(i,k_min,k_max),
+                                    load_if_possible=load, k_min=k_min, k_max=k_max)
+            print("")
+            print("Test cloud : ", end='')
+            nf_test = neighborhood_finder(tc, test_indices, save_dir, 'neighbors_test_{}_k_{}to{}'.format(i,k_min,k_max),
+                                    load_if_possible=load, k_min=k_min, k_max=k_max)
+            
             if not load :
                 nf_train.save()
                 nf_test.save()
-
-            neighborhoods_size_tr, eigenvalues_tr, normals_tr = nf_train.k_dummy()
-            neighborhoods_size_te, eigenvalues_te, normals_te = nf_test.k_dummy()
-
+                
+            neighborhoods_size_tr, eigenvalues_tr, normals_tr = nf_train.k_min_eigenentopy()
+            neighborhoods_size_te, eigenvalues_te, normals_te = nf_test.k_min_eigenentopy()
+            
+            print("")
+             
             ### compute features
             ff_tr = features_finder(tc, train_indices,
                                 neighborhoods_size_tr, eigenvalues_tr, normals_tr,
