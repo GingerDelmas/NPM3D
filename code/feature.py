@@ -75,18 +75,20 @@ class features_finder(saveable):
         # call the "saveable" class __init__()
         identifiers = [cloud.points, query_indices, neighborhoods_size]
         super().__init__(save_dir, identifiers, save_file=save_file)
-
-        self.cloud = cloud
-        self.query_indices = query_indices
-        self.neighborhoods_size = neighborhoods_size
-        self.eigenvalues = eigenvalues
-        self.normals = normals
-        self.features = {}
-        self.selected = []
-        self.ft_norm = {}
-        self.save_norm = save_norm
-        self.use_norm = use_norm
-        self.norm = norm
+        
+        # if load() does not succeed, calculate all needed data
+        if not self.load():         
+            self.cloud = cloud
+            self.query_indices = query_indices
+            self.neighborhoods_size = neighborhoods_size
+            self.eigenvalues = eigenvalues
+            self.normals = normals
+            self.features = {}
+            self.selected = []
+            self.ft_norm = {}
+            self.save_norm = save_norm
+            self.use_norm = use_norm
+            self.norm = norm
 
     def normalize_feature(self, y, name_ft=None, save_norm=None, use_norm=None, norm=None):
         """

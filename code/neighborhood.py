@@ -102,8 +102,10 @@ class neighborhood_finder(saveable):
                 self.k_max_all = k_max
             # adjust the window considered to the current 
             self.k_min = k_min; self.k_max = k_max;
-            self.eigs_to_test = self.eigs_all[:,k_min-self.k_min_all:k_max-2*k_min+self.k_min_all+1]
-            self.normals_to_test = self.normals_all[:,k_min-self.k_min_all:k_max-2*k_min+self.k_min_all+1]
+            low_bound = k_min - self.k_min_all
+            size = k_max - k_min + 1
+            self.eigs_to_test = self.eigs_all[:,low_bound:low_bound + size]
+            self.normals_to_test = self.normals_all[:,low_bound:low_bound + size]
 
 
     def compute_over_k_range(self, k_min, k_max):

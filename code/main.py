@@ -177,7 +177,7 @@ if __name__ == '__main__':
             file_type = "ply"
 
             nppl_train = 1000
-            nppl_test = 3000
+            nppl_test = 1000
             unic_k = 20
             saveCloud = True
             load = True
@@ -186,7 +186,6 @@ if __name__ == '__main__':
             print('\nCollect and preprocess cloud')
             tc = train_test_cloud(cloud_path,
                             save_dir,
-                            'train_cloud_{}_tr{}_te{}'.format(i, nppl_train, nppl_test),
                             file_type=file_type,
                             label_path=label_path,
                             load_if_possible=load,
@@ -210,8 +209,8 @@ if __name__ == '__main__':
             
             ### find the right neighborhood (here : variable)
             print("Computing neighborhoods\n")
-            k_min = 10
-            k_max = 10
+            k_min = 20
+            k_max = 25
             print("Train cloud : ", end='')
             nf_train = neighborhood_finder(tc, train_indices, save_dir,
                                     load_if_possible=load, k_min=k_min, k_max=k_max)
@@ -232,12 +231,10 @@ if __name__ == '__main__':
             ### compute features
             ff_tr = features_finder(tc, train_indices,
                                 neighborhoods_size_tr, eigenvalues_tr, normals_tr,
-                                save_dir, 'features_train_{}_k_{}'.format(i, unic_k),
-                                save_norm=True, use_norm=False, norm=None)
+                                save_dir, save_norm=True, use_norm=False, norm=None)
             ff_te = features_finder(tc, test_indices,
                                 neighborhoods_size_te, eigenvalues_te, normals_te,
-                                save_dir, 'features_test_{}_k_{}'.format(i, unic_k),
-                                save_norm=False, use_norm=True, norm=ff_tr.ft_norm)
+                                save_dir, save_norm=False, use_norm=True, norm=ff_tr.ft_norm)
 
             if True: #not load :
                 print("Compute training features\n")

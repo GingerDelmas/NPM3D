@@ -23,6 +23,7 @@ from sklearn.neighbors import KDTree
 from tqdm import tqdm
 
 from utils import *
+from ply import *
 
 ################################################################################
 # GLOBAL VARIABLES
@@ -161,7 +162,7 @@ class train_test_cloud(cloud):
             - get_split_statistics
     """
 
-    def __init__(self, cloud_path, save_dir, save_file, file_type="ply", label_path=None, load_if_possible=True,
+    def __init__(self, cloud_path, save_dir, save_file=None, file_type="ply", label_path=None, load_if_possible=True,
                  num_points_per_label_train=500, num_points_per_label_test=500):
 
         # call the "cloud" class __init__()
