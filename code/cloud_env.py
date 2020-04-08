@@ -57,10 +57,11 @@ class cloud(saveable):
 
     """
 
-    def __init__(self, cloud_path, save_dir, save_file, label_path=None):
+    def __init__(self, cloud_path, save_dir, save_file=None, label_path=None):
 
         # call the "saveable" class __init__()
-        super().__init__(save_dir, save_file)
+        identifiers = cloud_path.split('/')[-1]  # the filename
+        super().__init__(save_dir, identifiers, save_file=save_file)
 
         # the set categories of the data
         self.label_names = {0: 'Unclassified'}

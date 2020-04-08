@@ -70,9 +70,11 @@ class features_finder(saveable):
             - save_norm, use_norm, norm : see method "normalize_features"
     """
 
-    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file, save_norm=True, use_norm=False, norm=None):
+    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file=None, save_norm=True, use_norm=False, norm=None):
+        
         # call the "saveable" class __init__()
-        super().__init__(save_dir, save_file)
+        identifiers = [cloud.points, query_indices, neighborhoods_size]
+        super().__init__(save_dir, identifiers, save_file=save_file)
 
         self.cloud = cloud
         self.query_indices = query_indices

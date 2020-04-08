@@ -180,7 +180,7 @@ if __name__ == '__main__':
             nppl_test = 3000
             unic_k = 20
             saveCloud = True
-            load = False
+            load = True
 
             ### load cloud
             print('\nCollect and preprocess cloud')
@@ -194,9 +194,8 @@ if __name__ == '__main__':
                             num_points_per_label_test=nppl_test)
 
             tc.get_split_statistics()
-
-            if not load:
-                tc.save()
+            
+            tc.save()
 
             # hand sampled points
             train_indices = tc.hand_sampled_points(tc.train_samples_indices)
@@ -212,18 +211,18 @@ if __name__ == '__main__':
             ### find the right neighborhood (here : variable)
             print("Computing neighborhoods\n")
             k_min = 10
-            k_max = 100
+            k_max = 10
             print("Train cloud : ", end='')
-            nf_train = neighborhood_finder(tc, train_indices, save_dir, 'neighbors_train_{}_k_{}to{}'.format(i,k_min,k_max),
+            nf_train = neighborhood_finder(tc, train_indices, save_dir,
                                     load_if_possible=load, k_min=k_min, k_max=k_max)
-            print("")
+            print("Done!")
             print("Test cloud : ", end='')
-            nf_test = neighborhood_finder(tc, test_indices, save_dir, 'neighbors_test_{}_k_{}to{}'.format(i,k_min,k_max),
+            nf_test = neighborhood_finder(tc, test_indices, save_dir,
                                     load_if_possible=load, k_min=k_min, k_max=k_max)
+            print("Done!")
             
-            if not load :
-                nf_train.save()
-                nf_test.save()
+            nf_train.save()
+            nf_test.save()
                 
             neighborhoods_size_tr, eigenvalues_tr, normals_tr = nf_train.k_min_eigenentopy()
             neighborhoods_size_te, eigenvalues_te, normals_te = nf_test.k_min_eigenentopy()
@@ -240,7 +239,7 @@ if __name__ == '__main__':
                                 save_dir, 'features_test_{}_k_{}'.format(i, unic_k),
                                 save_norm=False, use_norm=True, norm=ff_tr.ft_norm)
 
-            if not load :
+            if True: #not load :
                 print("Compute training features\n")
                 ff_tr.features_2D_bins()
                 ff_tr.features_2D()

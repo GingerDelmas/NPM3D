@@ -18,12 +18,11 @@ Here are defined utilitary & general functions :
 ################################################################################
 
 import numpy as np
-import os, time, pickle
-from ply import read_ply
+import os, time, pickle, hashlib
 
 from sklearn.neighbors import KDTree
 
-from ply import *
+from ply import write_ply
 
 ################################################################################
 # CLASS DEFINITIONS
@@ -32,27 +31,35 @@ from ply import *
 class saveable:
     """
         Enables subclasses to save and load. Takes:
-            - save_dir : directory where we will save the cloud for later reuse
-            - save_file : name of the file where we will save the cloud
+            - save_dir : directory where we will save a class for later reuse
+            - identifiers : list of attributes that make a class unique; 
+                    i.e. if the identifiers given match the identifiers of a
+                    previously calculated class instance, the latter can be loaded
+            - save_file : optional, name of the file where we will save the cloud
+            
+            Unless the save_file filename is given, the identifiers are hashed 
+            to generate a filename used for saving and loading
     """
 
-    def __init__(self, save_dir, save_file):
+    def __init__(self, save_dir, identifiers, save_file=None):
         # save the directory, file name, and path
         self.save_dir = save_dir
-        self.save_file = save_file
-        self.save_path = save_dir + '/' + save_file
-
-    # TO IMPLEMENT
-    # enable save() without a given file name, instead using some hash of the
-    # initialization variables
+        if save_file is None:
+            m = hashlib.md5()
+            m.update(bytes(str(identifiers), 'utf8'))
+            self.save_file = m.hexdigest()[:10]
+        else:
+            self.save_file = save_file
+        self.save_path = self.save_dir + '/' + self.save_file
 
     def save(self, save_path=None):
         # save the file at the default or custom path
         if save_path is None:
             save_path = self.save_path
         with open(save_path, 'wb') as f:
+            # print("\n(progress saving)")
             pickle.dump(self.__dict__, f)
-
+            
 
     def load(self, load_if_possible=True, save_path=None):
         # load a file from the default or custom path
@@ -61,6 +68,7 @@ class saveable:
         # return True if there is a file to load and we want to load it
         if load_if_possible and os.path.exists(save_path):
             with open(save_path, 'rb') as f:
+                # print("\n(loading)")
                 self.__dict__ = pickle.load(f)
             return True
         else:
