@@ -83,7 +83,7 @@ class classifier:
         if (results_dir is not None) and (filename is not None):
             fig = plt.figure()
             ax = fig.add_subplot(111)
-            cax = ax.matshow(prop_M_confus, cmap='coolwarm', vmin=0, vmax=1)
+            cax = ax.matshow(prop_M_confus, cmap='Reds', vmin=0, vmax=1)
             fig.colorbar(cax)
 
             names = [self.label_names[l] for l in considered_labels]
