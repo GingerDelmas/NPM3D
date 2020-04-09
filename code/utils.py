@@ -57,7 +57,7 @@ class saveable:
         if save_path is None:
             save_path = self.save_path
         with open(save_path, 'wb') as f:
-            # print("\n(progress saving)")
+            # print(" (progress saving) ", end='')
             pickle.dump(self.__dict__, f)
             
 
@@ -68,7 +68,7 @@ class saveable:
         # return True if there is a file to load and we want to load it
         if load_if_possible and os.path.exists(save_path):
             with open(save_path, 'rb') as f:
-                # print("\n(loading)")
+                print(" (loading) ", end='')
                 self.__dict__ = pickle.load(f)
             return True
         else:

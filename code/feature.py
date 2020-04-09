@@ -20,6 +20,7 @@ Feature file : here is defined everything to compute features (and linked values
 import numpy as np
 from sklearn.neighbors import KDTree
 import matplotlib.pyplot as plt
+import time
 
 from utils import *
 from cloud_env import *
@@ -70,14 +71,18 @@ class features_finder(saveable):
             - save_norm, use_norm, norm : see method "normalize_features"
     """
 
-    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file=None, save_norm=True, use_norm=False, norm=None):
+    def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file=None, save_norm=True, use_norm=False, norm=None, load_if_possible=True):
         
         # call the "saveable" class __init__()
         identifiers = [cloud.points, query_indices, neighborhoods_size]
         super().__init__(save_dir, identifiers, save_file=save_file)
         
         # if load() does not succeed, calculate all needed data
-        if not self.load():         
+        if not self.load(load_if_possible):  
+            
+            t0 = time.time()
+            
+            # initialize the variables
             self.cloud = cloud
             self.query_indices = query_indices
             self.neighborhoods_size = neighborhoods_size
@@ -89,6 +94,15 @@ class features_finder(saveable):
             self.save_norm = save_norm
             self.use_norm = use_norm
             self.norm = norm
+            
+            # calculate features
+            self.features_2D_bins()
+            self.features_2D()
+            self.features_3D()
+            
+            t1 = time.time()
+            self.compute_time = t1 - t0
+            
 
     def normalize_feature(self, y, name_ft=None, save_norm=None, use_norm=None, norm=None):
         """

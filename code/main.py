@@ -32,20 +32,26 @@ developpement = True
 separate_cloud = False
 
 ################################################################################
+# PATHS
+################################################################################
+
+train_dir = '../../NPM3D_local_files/data/train'
+test_dir = '../../NPM3D_local_files/data/test'
+results_dir = '../../NPM3D_local_files/results'
+save_dir = '../../NPM3D_local_files/saves'
+
+################################################################################
 # MAIN
 ################################################################################
 
-if __name__ == '__main__':
-
+def main():
     # file paths
-    train_dir = '../../NPM3D_local_files/mini_data'
-    test_dir = '../../NPM3D_local_files/data/test'
-    results_dir = '../../NPM3D_local_files/results'
-    save_dir = '../../NPM3D_local_files/saves'
+    
 
     t0 = time.time()
 
-    ply_files = [f for f in os.listdir(train_dir) if f.endswith('.ply')]
+    train_files = [f for f in os.listdir(train_dir) if f.endswith('.ply')]
+    selected_train_files = train_files[:1]
 
     if developpement:
 
@@ -172,7 +178,7 @@ if __name__ == '__main__':
             # file_type = "txt"
 
             i = 1
-            cloud_path = train_dir + '/' + ply_files[i]
+            cloud_path = train_dir + '/' + train_files[i]
             label_path = None
             file_type = "ply"
 
@@ -209,15 +215,13 @@ if __name__ == '__main__':
             
             ### find the right neighborhood (here : variable)
             print("Computing neighborhoods\n")
-            k_min = 20
-            k_max = 25
+            k_min = 19
+            k_max = 22
             print("Train cloud : ", end='')
-            nf_train = neighborhood_finder(tc, train_indices, save_dir,
-                                    load_if_possible=load, k_min=k_min, k_max=k_max)
+            nf_train = neighborhood_finder(tc, train_indices, save_dir, k_min=k_min, k_max=k_max)
             print("Done!")
             print("Test cloud : ", end='')
-            nf_test = neighborhood_finder(tc, test_indices, save_dir,
-                                    load_if_possible=load, k_min=k_min, k_max=k_max)
+            nf_test = neighborhood_finder(tc, test_indices, save_dir, k_min=k_min, k_max=k_max)
             print("Done!")
             
             nf_train.save()
@@ -229,38 +233,25 @@ if __name__ == '__main__':
             print("")
              
             ### compute features
+            print("Compute training features", end='')
             ff_tr = features_finder(tc, train_indices,
                                 neighborhoods_size_tr, eigenvalues_tr, normals_tr,
                                 save_dir, save_norm=True, use_norm=False, norm=None)
+            
+            print("\n\nDo feature selection")
+            ff_tr.feature_selection()
+            print("... selected features : {} \n".format(ff_tr.selected))
+            
+            print("Compute testing features", end='')
             ff_te = features_finder(tc, test_indices,
                                 neighborhoods_size_te, eigenvalues_te, normals_te,
                                 save_dir, save_norm=False, use_norm=True, norm=ff_tr.ft_norm)
-
-            if True: #not load :
-                print("Compute training features\n")
-                ff_tr.features_2D_bins()
-                ff_tr.features_2D()
-                ff_tr.features_3D()
-
-                ### feature selection
-                print("Do feature selection")
-                ff_tr.feature_selection()
-                print("... selected features : {} \n".format(ff_tr.selected))
-                ff_tr.save()
-
-                print("Compute testing features\n")
-                ff_te.norm = ff_tr.ft_norm # use normalization from the training set
-                ff_te.features_2D_bins()
-                ff_te.features_2D()
-                ff_te.features_3D()
-                ff_te.save()
-
-            else :
-                ff_te.load()
-                ff_tr.load()
+            
+            ff_tr.save()
+            ff_te.save()
 
             ### classify
-            print("Classify")
+            print("\n\nClassify")
             X_train = ff_tr.hand_features()
             X_test = ff_te.hand_features(selected_specific=ff_tr.selected, compute_specific=True)
             clf = classifier(tc, train_indices, test_indices, X_train, X_test)
@@ -286,3 +277,12 @@ if __name__ == '__main__':
 
     t1 = time.time()
     print('Done in %.3f seconds.\n' % (t1 - t0))
+    
+
+
+################################################################################
+# Helper functions
+################################################################################
+ 
+if __name__ == '__main__':
+    main()

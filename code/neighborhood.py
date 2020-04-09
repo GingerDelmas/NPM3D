@@ -20,6 +20,7 @@ Neighborhood file : here is defined everything to compute neighborhood size (and
 
 import numpy as np
 from sklearn.neighbors import KDTree
+import time
 
 from utils import *
 from cloud_env import *
@@ -84,21 +85,23 @@ class neighborhood_finder(saveable):
         if not self.load(load_if_possible):
             self.k_min = self.k_min_all = k_min
             self.k_max = self.k_max_all = k_max
-            self.eigs_all, self.normals_all = self.compute_over_k_range(k_min, k_max)
+            self.eigs_all, self.normals_all, self.compute_time = self.compute_over_k_range(k_min, k_max)
             self.eigs_to_test, self.normals_to_test = self.eigs_all, self.normals_all
         # otherwise some data was already calculated, find what is missing
         else:
             # we are looking for lower k values then before
             if k_min < self.k_min_all:
-                eigs_tmp, normals_tmp = self.compute_over_k_range(k_min, self.k_min_all - 1)
+                eigs_tmp, normals_tmp, compute_time_tmp = self.compute_over_k_range(k_min, self.k_min_all - 1)
                 self.eigs_all = np.concatenate((eigs_tmp, self.eigs_all), axis=1)
                 self.normals_all = np.concatenate((normals_tmp, self.normals_all), axis=1)
+                self.compute_time += compute_time_tmp 
                 self.k_min_all = k_min
             # we are looking for higher k values then before
             if k_max > self.k_max_all:
-                eigs_tmp, normals_tmp = self.compute_over_k_range(self.k_max_all + 1, k_max)
+                eigs_tmp, normals_tmp, compute_time_tmp = self.compute_over_k_range(self.k_max_all + 1, k_max)
                 self.eigs_all = np.concatenate((self.eigs_all, eigs_tmp), axis=1)
                 self.normals_all = np.concatenate((self.normals_all, normals_tmp), axis=1)
+                self.compute_time += compute_time_tmp 
                 self.k_max_all = k_max
             # adjust the window considered to the current 
             self.k_min = k_min; self.k_max = k_max;
@@ -121,6 +124,8 @@ class neighborhood_finder(saveable):
                 - normals : np array storing the normal vector found for every value of query_indices and k
         """
 
+        t0 = time.time()
+        
         # empty containers for the output
         eigenvalues = np.empty((len(self.query_indices), k_max - k_min + 1, 3))
         normals = np.empty((len(self.query_indices), k_max - k_min + 1, 3))
@@ -130,8 +135,11 @@ class neighborhood_finder(saveable):
             knns = self.cloud.tree.query(self.cloud.points[self.query_indices], k, return_distance=False)
             eigenvalues[:,k-k_min,:], normals[:,k-k_min,:] = self.local_PCA(knns)
             print('k = {}'.format(k))
+            
+        t1 = time.time()
+        compute_time = t1 - t0
 
-        return eigenvalues, normals
+        return eigenvalues, normals, compute_time
 
 
     def local_PCA(self, knns):

@@ -85,7 +85,11 @@ class cloud(saveable):
             # read the ply file and store content
             cloud_ply = read_ply(self.cloud_path)
             self.points = np.vstack((cloud_ply['x'], cloud_ply['y'], cloud_ply['z'])).T
-            if include_labels: self.labels = cloud_ply[name_of_class_label]
+            if include_labels: 
+                try:
+                    self.labels = cloud_ply["class"]
+                except ValueError:
+                    self.labels = cloud_ply["scalar_class"]
 
         elif file_type=="txt":
             self.label_names = {0: 'Unclassified',
