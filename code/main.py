@@ -59,7 +59,7 @@ if __name__ == '__main__':
             nppl_train = 1000
             nppl_test = 3000
             unic_k = 20
-            saveCloud = True
+            saveCloud = False
             load = False
 
             ### load cloud
@@ -134,16 +134,27 @@ if __name__ == '__main__':
                 ff_te.load()
                 ff_tr.load()
 
-            print("... selected features : {} \n".format(ff_tr.selected))
-
             ### classify
             print("Classify")
             X_train = ff_tr.hand_features()
             X_test = ff_te.hand_features(selected_specific=ff_tr.selected, compute_specific=True)
-            clf = classifier(tc_tr, train_indices, test_indices, X_train, X_test, test_cloud_diff=True, cloud_te=tc_te)
+            clf = classifier(X_train, X_test, tc_tr.labels[train_indices], tc_te.labels[test_indices], tc_tr.label_names)
             rf = clf.random_forest()
-            y_pred, score = clf.evaluate(rf)
-            print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(score,2)*100))
+            y_pred, measures = clf.evaluate(rf, save_dir, "confusion_matrix.png")
+            print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(measures["accuracy"],2)*100))
+            mess = "Other available measures (considered classes : {}): \n\t- recall by class (%) : {}\n\t- precision by class (%) : {}\n\t- F by class (%) : {}\n\t- mean recall : {}%\n\t- mean precision : {}%\n\t- global F : {}%"
+
+            def format_val(val):
+                return (np.round(val,2)*100).astype(int)
+
+            print(mess.format("'"+"', '".join([tc_tr.label_names[l] for l in measures["considered_labels"]])+"'",
+                                format_val(measures["recall_by_class"]),
+                                format_val(measures["precision_by_class"]),
+                                format_val(measures["F_by_class"]),
+                                format_val(measures["mean_recall"]),
+                                format_val(measures["mean_precision"]),
+                                format_val(measures["global_F"])))
+
             clf.get_classification_statistics(y_pred)
 
             ### save result (train set, here)
@@ -178,7 +189,7 @@ if __name__ == '__main__':
             nppl_train = 1000
             nppl_test = 3000
             unic_k = 20
-            saveCloud = True
+            saveCloud = False
             load = False
 
             ### load cloud
@@ -251,10 +262,23 @@ if __name__ == '__main__':
             print("Classify")
             X_train = ff_tr.hand_features()
             X_test = ff_te.hand_features(selected_specific=ff_tr.selected, compute_specific=True)
-            clf = classifier(tc, train_indices, test_indices, X_train, X_test)
+            clf = classifier(X_train, X_test, tc.labels[train_indices], tc.labels[test_indices], tc.label_names)
             rf = clf.random_forest()
-            y_pred, score = clf.evaluate(rf)
-            print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(score,2)*100))
+            y_pred, measures = clf.evaluate(rf, save_dir, "confusion_matrix.png")
+            print("... evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(measures["accuracy"],2)*100))
+            mess = "Other available measures (considered classes : {}): \n\t- recall by class (%) : {}\n\t- precision by class (%) : {}\n\t- F by class (%) : {}\n\t- mean recall : {}%\n\t- mean precision : {}%\n\t- global F : {}%"
+
+            def format_val(val):
+                return (np.round(val,2)*100).astype(int)
+
+            print(mess.format("'"+"', '".join([tc.label_names[l] for l in measures["considered_labels"]])+"'",
+                                format_val(measures["recall_by_class"]),
+                                format_val(measures["precision_by_class"]),
+                                format_val(measures["F_by_class"]),
+                                format_val(measures["mean_recall"]),
+                                format_val(measures["mean_precision"]),
+                                format_val(measures["global_F"])))
+
             clf.get_classification_statistics(y_pred)
 
             if saveCloud:
