@@ -26,13 +26,6 @@ from utils import *
 from ply import *
 
 ################################################################################
-# GLOBAL VARIABLES
-################################################################################
-
-# it should be "class", but on mini data files
-name_of_class_label = "scalar_class"
-
-################################################################################
 # CLASS DEFINITIONS
 ################################################################################
 
@@ -85,7 +78,7 @@ class cloud(saveable):
             # read the ply file and store content
             cloud_ply = read_ply(self.cloud_path)
             self.points = np.vstack((cloud_ply['x'], cloud_ply['y'], cloud_ply['z'])).T
-            if include_labels: 
+            if include_labels:
                 try:
                     self.labels = cloud_ply["class"]
                 except ValueError:
@@ -170,20 +163,20 @@ class train_test_cloud(cloud):
 
         # call the "cloud" class __init__()
         super().__init__(cloud_path, save_dir, save_file, label_path)
-        
+
         # if load() succeeds, skip initializing
         if not self.load(load_if_possible):
-            
+
             t0 = time.time()
-            
+
             # include labels since this is the train set
             self.fetch_points(include_labels=True, file_type=cloud_path.split('.')[-1])
             self.train_samples_indices = {}
             self.test_samples_indices = {}
-            
+
             t1 = time.time()
             self.compute_time = t1 - t0
-            
+
 
     def sample_n_points_per_label(self, num_points_per_label, seed=None, test=False):
         """
@@ -232,7 +225,7 @@ class train_test_cloud(cloud):
                         self.label_names[label], len(label_indices), num_points_per_label))
 
             samples_indices[label] = sampled_indices
-            
+
         if not test:
             self.train_samples_indices = samples_indices
         else:
