@@ -103,10 +103,10 @@ class features_finder(saveable):
             t1 = time.time()
             self.compute_time = t1 - t0
 
-        # TODO
-        plt.hist(neighborhoods_size, bins=np.max(neighborhoods_size)-np.min(neighborhoods_size))
-        plt.savefig('../../NPM3D_local_files/results/hist.png')
-        plt.close()
+        # # TODO
+        # plt.hist(neighborhoods_size, bins=np.max(neighborhoods_size)-np.min(neighborhoods_size))
+        # plt.savefig('../../NPM3D_local_files/results/hist.png')
+        # plt.close()
 
     def normalize_feature(self, y, name_ft=None, save_norm=None, use_norm=None, norm=None):
         """
@@ -239,7 +239,7 @@ class features_finder(saveable):
                     - change of curvature
         """
 
-        eps = 10**(-5) # to avoid errors when eigenvalues = 0 (denominator, log)
+        eps = 10**(-8) # to avoid errors when eigenvalues = 0 (denominator, log)
 
         #### get the eigenvalues and normalize them
         e1, e2, e3 = self.eigenvalues[:,2], self.eigenvalues[:,1], self.eigenvalues[:,0]
@@ -290,7 +290,7 @@ class features_finder(saveable):
 
         ### other 3D shape features
 
-        omnivariance = (e1*e2*e3)**(1/3.)
+        omnivariance = (e1*e2*e3 + abs(np.min(e1*e2*e3)))**(1/3.)
         anisotropy = (e1 - e3) / (e1 + eps)
         eigenentropy = - e1*np.log(e1 + eps) - e2*np.log(e2 + eps) - e3*np.log(e3 + eps)
         summ = e1 + e2 + e3
