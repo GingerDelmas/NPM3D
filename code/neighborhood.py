@@ -19,6 +19,7 @@ Neighborhood file : here is defined everything to compute neighborhood size (and
 ################################################################################
 
 import numpy as np
+from tqdm import tqdm
 from sklearn.neighbors import KDTree
 import time
 
@@ -72,7 +73,7 @@ class neighborhood_finder(saveable):
     """
 
     def __init__(self, cloud, query_indices, save_dir, save_file=None, load_if_possible=True, k_min=10, k_max=100):
-        
+
         # call the "saveable" class __init__()
         identifiers = [cloud.points, query_indices]
         super().__init__(save_dir, identifiers, save_file=save_file)
@@ -94,16 +95,16 @@ class neighborhood_finder(saveable):
                 eigs_tmp, normals_tmp, compute_time_tmp = self.compute_over_k_range(k_min, self.k_min_all - 1)
                 self.eigs_all = np.concatenate((eigs_tmp, self.eigs_all), axis=1)
                 self.normals_all = np.concatenate((normals_tmp, self.normals_all), axis=1)
-                self.compute_time += compute_time_tmp 
+                self.compute_time += compute_time_tmp
                 self.k_min_all = k_min
             # we are looking for higher k values then before
             if k_max > self.k_max_all:
                 eigs_tmp, normals_tmp, compute_time_tmp = self.compute_over_k_range(self.k_max_all + 1, k_max)
                 self.eigs_all = np.concatenate((self.eigs_all, eigs_tmp), axis=1)
                 self.normals_all = np.concatenate((self.normals_all, normals_tmp), axis=1)
-                self.compute_time += compute_time_tmp 
+                self.compute_time += compute_time_tmp
                 self.k_max_all = k_max
-            # adjust the window considered to the current 
+            # adjust the window considered to the current
             self.k_min = k_min; self.k_max = k_max;
             low_bound = k_min - self.k_min_all
             size = k_max - k_min + 1
@@ -125,17 +126,17 @@ class neighborhood_finder(saveable):
         """
 
         t0 = time.time()
-        
+
         # empty containers for the output
         eigenvalues = np.empty((len(self.query_indices), k_max - k_min + 1, 3))
         normals = np.empty((len(self.query_indices), k_max - k_min + 1, 3))
-        
+
         print('Trying k values from {} to {}. Completed:'.format(k_min, k_max))
-        for k in range(k_min, k_max + 1): # this includes calculus for k = k_max
+        for k in tqdm(range(k_min, k_max + 1)): # this includes calculus for k = k_max
             knns = self.cloud.tree.query(self.cloud.points[self.query_indices], k, return_distance=False)
             eigenvalues[:,k-k_min,:], normals[:,k-k_min,:] = self.local_PCA(knns)
-            print('k = {}'.format(k))
-            
+            # print('k = {}'.format(k))
+
         t1 = time.time()
         compute_time = t1 - t0
 
@@ -187,16 +188,16 @@ class neighborhood_finder(saveable):
         """
             k maximizing the change in curvature C = l3 / (l1 + l2 + l3)
             where li is the ith biggest eigenvalue of the structure tensor
-        """ 
-        # find the best k for each query 
+        """
+        # find the best k for each query
         curvatures = self.eigs_to_test[...,2] / np.sum(self.eigs_to_test, axis=2)
         bestk = np.argmax(curvatures, axis=1)
-        
+
         # deduce the outputs
         neighborhoods_size = (bestk + self.k_min).astype("uint8")
         eigenvalues = self.eigs_to_test[range(len(bestk)),bestk,:]
         normals = self.normals_to_test[range(len(bestk)),bestk,:]
-        
+
         return neighborhoods_size, eigenvalues, normals
 
 
@@ -211,7 +212,7 @@ class neighborhood_finder(saveable):
         S = self.eigs_to_test[...,2] / self.eigs_to_test[...,0]
         entropy = - L * np.log(L) - P * np.log(P) - S * np.log(S)
         bestk = np.argmin(entropy, axis=1)
-        
+
         # deduce the outputs
         neighborhoods_size = (bestk + self.k_min).astype("uint8")
         eigenvalues = self.eigs_to_test[range(len(bestk)),bestk,:]
@@ -229,7 +230,7 @@ class neighborhood_finder(saveable):
         # find the best k for each query
         entropy =  - np.sum(self.eigs_to_test * np.log(self.eigs_to_test), axis=2)
         bestk = np.argmin(entropy, axis=1)
-        
+
         # deduce the outputs
         neighborhoods_size = (bestk + self.k_min).astype("uint8")
         eigenvalues = self.eigs_to_test[range(len(bestk)),bestk,:]

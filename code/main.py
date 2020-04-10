@@ -27,16 +27,16 @@ from classifier import *
 # GLOBAL VARIABLES
 ################################################################################
 
-num_trials = 2  # number of times the process is conducted (on a different random sample)
+num_trials = 10  # number of times the process is conducted (on a different random sample)
 
 num_points_train = 1000  # num points per label, per train file, per trial
 num_points_test = 3000  # num points per label, per test file, per trial
-k_min = 20  # minimum neighborhood size considered
-k_max = 20  # maximum neighborhood size considered
+k_min = 10  # minimum neighborhood size considered
+k_max = 100  # maximum neighborhood size considered
 
 # pick one among 'k_dummy', 'k_critical_curvature',
 # 'k_min_shannon_entropy' and 'k_min_eigenentopy'
-k_chooser = 'k_dummy'
+k_chooser = 'k_critical_curvature'
 
 ################################################################################
 # PATHS
@@ -56,8 +56,8 @@ if __name__ == '__main__':
     files = [f for f in os.listdir(data_dir) if f.endswith(('.ply', '.txt'))]
 
     # select the desired files, keeping the selection in the form of a list
-    train_files = [files[0], files[2]]
-    test_files = [files[0]]
+    train_files = [files[2]]
+    test_files = [files[2]]
     print("Files chosen:", "\nTrain:", train_files, "\nTest:", test_files)
 
     # NOTE : the different files used here are required to share the same
