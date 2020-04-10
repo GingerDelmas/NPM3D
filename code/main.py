@@ -38,6 +38,8 @@ k_max = 100  # maximum neighborhood size considered
 # 'k_min_shannon_entropy' and 'k_min_eigenentopy'
 k_chooser = 'k_critical_curvature'
 
+all_features = False # if False, use only relevant features
+
 ################################################################################
 # PATHS
 ################################################################################
@@ -142,7 +144,10 @@ if __name__ == '__main__':
             # select features
             print("\nFeature selection", end='')
             t0 = time.time()
-            ff.feature_selection(results_dir=results_dir)
+            if all_features:
+                ff.selected = list(ff.features.keys())
+            else :
+                ff.feature_selection(results_dir=results_dir)
             t1 = time.time()
             print("\nSelected features : {}".format(ff.selected))
             print('Done in %.0f seconds' % (t1 - t0))

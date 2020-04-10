@@ -99,6 +99,7 @@ class classifier:
             plt.savefig(filename)
         else :
             plt.savefig(results_dir+"/"+filename)
+        plt.close(fig)
 
         # prepare output
         measures = {

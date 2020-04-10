@@ -72,16 +72,16 @@ class features_finder(saveable):
     """
 
     def __init__(self, cloud, query_indices, neighborhoods_size, eigenvalues, normals, save_dir, save_file=None, save_norm=True, use_norm=False, norm=None, load_if_possible=True):
-        
+
         # call the "saveable" class __init__()
         identifiers = [cloud.points, query_indices, neighborhoods_size]
         super().__init__(save_dir, identifiers, save_file=save_file)
-        
+
         # if load() does not succeed, calculate all needed data
-        if not self.load(load_if_possible):  
-            
+        if not self.load(load_if_possible):
+
             t0 = time.time()
-            
+
             # initialize the variables
             self.cloud = cloud
             self.query_indices = query_indices
@@ -94,15 +94,19 @@ class features_finder(saveable):
             self.save_norm = save_norm
             self.use_norm = use_norm
             self.norm = norm
-            
+
             # calculate features
             self.features_2D_bins()
             self.features_2D()
             self.features_3D()
-            
+
             t1 = time.time()
             self.compute_time = t1 - t0
-            
+
+        # TODO
+        plt.hist(neighborhoods_size, bins=np.max(neighborhoods_size)-np.min(neighborhoods_size))
+        plt.savefig('../../NPM3D_local_files/results/hist.png')
+        plt.close()
 
     def normalize_feature(self, y, name_ft=None, save_norm=None, use_norm=None, norm=None):
         """
@@ -422,6 +426,7 @@ class features_finder(saveable):
 
         plt.tight_layout()
         plt.savefig(results_dir+"/"+filename_corr)
+        plt.close(fig)
 
         ### order features indices in "subset" such that the first "m" elements
         # are those maximizing the relevance for any set of "m" elements
@@ -456,6 +461,7 @@ class features_finder(saveable):
         plt.xlabel("New selected feature at each step")
         plt.tight_layout()
         plt.savefig(results_dir+"/"+filename_rel)
+        plt.close(fig_relevance)
 
         ### select the feature subset maximizing the relevance
         take = np.argmax(np.array(relevance))+1
