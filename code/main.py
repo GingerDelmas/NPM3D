@@ -286,6 +286,9 @@ if __name__ == '__main__':
             ft_list += [cloud.labels[indices], y_pred[begin_y_pred:begin_y_pred+len(indices)]]
             begin_y_pred += len(indices) # for the next cloud
             ft_names += ["label", "predicted_class"]
+            # also consider the neighborhood size as a scalar field
+            ft_list += [ff.neighborhoods_size]
+            ft_names += ["neighborhood_size"]
             # save cloud
             filename = "cloud_{}_predictions.ply".format(f[:-4])
             save_cloud_and_scalar_fields(cloud.points[indices], ft_list,
