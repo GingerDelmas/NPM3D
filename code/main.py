@@ -63,6 +63,19 @@ if __name__ == '__main__':
     # NOTE : the different files used here are required to share the same
     #        labeling system
 
+    # keep statistics over the different trials
+    best_accuracy = 0 # to keep only the output results of the best trial
+    all_trials_accuracy = []
+    all_trials_selected_features = []
+    all_trials_considered_labels = []
+    all_trials_recall_by_class = []
+    all_trials_precision_by_class = []
+    all_trials_F_by_class = []
+    all_trials_mean_recall = []
+    all_trials_mean_precision = []
+    all_trials_global_F = []
+    all_trials_computation_time = []
+
     for trial in range(num_trials):
         print('\nTRIAL', trial)
         t0_trial = time.time()
@@ -248,9 +261,6 @@ if __name__ == '__main__':
         print("Evaluation : {}% of points from the testing set were correctly classified.\n".format(np.round(measures["accuracy"],2)*100))
         mess = "Other available measures (considered classes : {}): \n\t- recall by class (%) : {}\n\t- precision by class (%) : {}\n\t- F by class (%) : {}\n\t- mean recall : {}%\n\t- mean precision : {}%\n\t- global F : {}%"
 
-        def format_val(val):
-            return (np.round(val,2)*100).astype(int)
-
         print(mess.format("'"+"', '".join([cloud.label_names[l] for l in measures["considered_labels"]])+"'",
                             format_val(measures["recall_by_class"]),
                             format_val(measures["precision_by_class"]),
@@ -276,6 +286,70 @@ if __name__ == '__main__':
             save_cloud_and_scalar_fields(cloud.points[indices], ft_list,
                                             ft_names, results_dir, filename)
 
-
         t1_trial = time.time()
         print('Full trial done in %.0f seconds.\n' % (t1_trial - t0_trial))
+
+        #########################
+        # SAVE TRIAL STATISTICS
+        #########################
+
+        # if this is the best model obtained so far, save generated results
+        # (images & prediction cloud) under a different name, else erase them
+        res_files = [f for f in os.listdir(results_dir) if f.endswith(('.ply', '.png'))]
+
+        if measures["accuracy"] > best_accuracy :
+            best_accuracy = measures["accuracy"]
+
+            for r in res_files :
+                if "best" not in r: # this will erase the previous "best" files (= update)
+                    os.rename(results_dir+"/"+r, results_dir+"/"+"best_"+r)
+
+        else : # erase every file that isn't representing the best result
+            for r in res_files :
+                if "best" not in r:
+                    os.remove(results_dir+"/"+r)
+
+        # store measured values to later compute averages and summarizations
+        all_trials_accuracy.append(measures["accuracy"])
+        all_trials_selected_features.append(selected_features_all)
+        all_trials_considered_labels.append(measures["considered_labels"])
+        all_trials_recall_by_class.append(measures["recall_by_class"])
+        all_trials_precision_by_class.append(measures["precision_by_class"])
+        all_trials_F_by_class.append(measures["F_by_class"])
+        all_trials_mean_recall.append(measures["mean_recall"])
+        all_trials_mean_precision.append(measures["mean_precision"])
+        all_trials_global_F.append(measures["global_F"])
+        all_trials_computation_time.append(t1_trial - t0_trial)
+
+    #################################
+    # COMPUTE ALL TRIALS STATISTICS
+    #################################
+
+    print("#########################")
+    print("# All trials statistics #")
+    print("#########################")
+
+    print("\nFeatures always selected :", find_intersection(all_trials_selected_features))
+    print("Mean accuracy :", format_val(np.mean(all_trials_accuracy)), "%")
+    print("Mean recall :", format_val(np.mean(all_trials_mean_recall)), "%")
+    print("Mean precision :", format_val(np.mean(all_trials_mean_precision)), "%")
+    print("Mean global F-measure :", format_val(np.mean(all_trials_global_F)), "%")
+    print("Mean time computation :  %.0f seconds.\n" % np.mean(all_trials_computation_time))
+
+    num_class = len(cloud.label_names)
+    considered_labels = sum(all_trials_considered_labels, [])
+    count_considered = np.array([considered_labels.count(l) for l in range(num_class)])
+    count_considered[count_considered==0] = -1
+
+    val1 = arrange_in_matrix(all_trials_considered_labels,all_trials_recall_by_class, num_class)/count_considered
+    val2 = arrange_in_matrix(all_trials_considered_labels,all_trials_precision_by_class, num_class)/count_considered
+    val3 = arrange_in_matrix(all_trials_considered_labels,all_trials_F_by_class, num_class)/count_considered
+
+    d_name = max([len(cloud.label_names[l]) for l in cloud.label_names.keys()]+[len("class")])+3
+    header = "{0:<%d}    recall   precision   F-measure\n" % (d_name)
+    lineprint =   "{0:<%d} : {1:>5}%%   {2:>5}%%      {3:>5}%%" % (d_name)
+    print(header.format("class"))
+    for c in cloud.label_names.keys():
+        print(lineprint.format(cloud.label_names[c], format_val(val1[c]), format_val(val2[c]), format_val(val3[c])))
+
+    print("")

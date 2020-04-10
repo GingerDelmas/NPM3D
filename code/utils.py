@@ -32,12 +32,12 @@ class saveable:
     """
         Enables subclasses to save and load. Takes:
             - save_dir : directory where we will save a class for later reuse
-            - identifiers : list of attributes that make a class unique; 
+            - identifiers : list of attributes that make a class unique;
                     i.e. if the identifiers given match the identifiers of a
                     previously calculated class instance, the latter can be loaded
             - save_file : optional, name of the file where we will save the cloud
-            
-            Unless the save_file filename is given, the identifiers are hashed 
+
+            Unless the save_file filename is given, the identifiers are hashed
             to generate a filename used for saving and loading
     """
 
@@ -59,7 +59,7 @@ class saveable:
         with open(save_path, 'wb') as f:
             # print(" (progress saving) ", end='')
             pickle.dump(self.__dict__, f)
-            
+
 
     def load(self, load_if_possible=True, save_path=None):
         # load a file from the default or custom path
@@ -78,6 +78,55 @@ class saveable:
 ################################################################################
 # FUNCTIONS DEFINITIONS
 ################################################################################
+
+def format_val(val):
+    """
+    Format arrays of percentages to print out.
+    'val' is an array of floats or a number.
+    """
+    if isinstance(val, np.ndarray):
+        ret = [str(u)[:5] for u in (np.round(val,2)*100)]
+    else :
+        ret = str((np.round(val,2)*100))[:5]
+    return ret
+
+def find_intersection(u):
+    """
+    In :
+        - u : list containing lists of values
+    Out :
+        - v : list of values appearing in every sublist of 'u'
+    """
+    v = []
+    for x in u[0]:
+        found = True
+        for L in u[1:]:
+            found = found & (x in L)
+        if found :
+            v.append(x)
+    return v
+
+def arrange_in_matrix(considered_class, values, num_class):
+
+    """
+    In :
+        - considered_class : indices of the classes appearing in the testing set, for each trial
+        - values : values to sum according to the class
+                   'values' is a list containing for each trial a list of values (one value per considered class)
+        - num_class : number of class potentially encountered in the testing set
+
+    Out :
+        - array of shape (num_class), containing the sum of the values according to their class
+
+    """
+
+    num_trials = len(considered_class)
+    matrix = np.zeros((num_trials, num_class))
+
+    for trial in range(num_trials):
+        matrix[trial, np.array(considered_class[trial])] = np.array(values[trial])
+
+    return np.sum(matrix, axis=0)
 
 def save_cloud_and_scalar_fields(cloud, scalar_fields, fields_name, save_dir, filename):
     """
