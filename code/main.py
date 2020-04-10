@@ -27,7 +27,7 @@ from classifier import *
 # GLOBAL VARIABLES
 ################################################################################
 
-num_trials = 1  # number of times the process is conducted (on a different random sample)
+num_trials = 2  # number of times the process is conducted (on a different random sample)
 
 num_points_train = 1000  # num points per label, per train file, per trial
 num_points_test = 1000  # num points per label, per test file, per trial
@@ -140,7 +140,10 @@ if __name__ == '__main__':
             train_indices.append(indices)
         
         # take the mean of norms selected features listed
-        norms_all = {key: [sum(n[key][0] for n in norms), sum(n[key][1] for n in norms)] 
+            
+        
+        norms_all = {key: [np.mean([float(n[key][0]) for n in norms]), 
+                           np.mean([float(n[key][1]) for n in norms])] 
                      for key in norms[0].keys()}
         
         
