@@ -166,21 +166,26 @@ class train_test_cloud(cloud):
             - get_split_statistics
     """
 
-    def __init__(self, cloud_path, save_dir, save_file=None, file_type="ply", label_path=None, load_if_possible=True,
-                 num_points_per_label_train=500, num_points_per_label_test=500):
+    def __init__(self, cloud_path, save_dir, save_file=None, label_path=None, load_if_possible=True):
 
         # call the "cloud" class __init__()
         super().__init__(cloud_path, save_dir, save_file, label_path)
-
+        
         # if load() succeeds, skip initializing
         if not self.load(load_if_possible):
+            
+            t0 = time.time()
+            
             # include labels since this is the train set
-            self.fetch_points(include_labels=True, file_type=file_type)
-            self.train_samples_indices = self.sample_n_points_per_label(num_points_per_label_train, train=True)
-            self.test_samples_indices = self.sample_n_points_per_label(num_points_per_label_test, test=True)
+            self.fetch_points(include_labels=True, file_type=cloud_path.split('.')[-1])
+            self.train_samples_indices = {}
+            self.test_samples_indices = {}
+            
+            t1 = time.time()
+            self.compute_time = t1 - t0
+            
 
-
-    def sample_n_points_per_label(self, num_points_per_label, train=False, test=False):
+    def sample_n_points_per_label(self, num_points_per_label, seed=None, test=False):
         """
             Sample a fixed number of points per labeled class to:
                 1) limit computation time
@@ -212,12 +217,13 @@ class train_test_cloud(cloud):
 
             label_indices = np.flatnonzero(self.labels == label)
 
-            if test : # don't consider points that were already sampled for the train set
+            if test and self.train_samples_indices: # don't consider points that were already sampled for the train set
                 label_indices = set(label_indices).difference(set(self.train_samples_indices[label]))
                 label_indices = np.array(list(label_indices)).astype(int)
             if num_points_per_label==-1: # take all points
                 sampled_indices = label_indices
             else : # sample
+                np.random.seed(seed)
                 try:
                     sampled_indices = np.random.choice(label_indices, num_points_per_label, replace=False)
                 except ValueError:
@@ -226,8 +232,13 @@ class train_test_cloud(cloud):
                         self.label_names[label], len(label_indices), num_points_per_label))
 
             samples_indices[label] = sampled_indices
+            
+        if not test:
+            self.train_samples_indices = samples_indices
+        else:
+            self.test_samples_indices = samples_indices
 
-        return samples_indices
+        # return samples_indices
 
     def hand_sampled_points(self, samples_indices):
         """
