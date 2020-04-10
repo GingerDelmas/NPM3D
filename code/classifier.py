@@ -19,6 +19,7 @@ Classifier file : here is defined everything to classify points :
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix
 
 from utils import *
 from cloud_env import *
@@ -33,15 +34,12 @@ class classifier:
     """ Container to test different kind of classifiers.
 
     In:
-        - cloud_tr : cloud of the train set
-        - cloud_te : cloud of the test set, if different from the training cloud
-        - test_cloud_diff : tells whether to use the input cloud_te
-        - train_indices, test_indices : "query_indices" for both set
         - X_train, X_test : matrix of size (len(query_indices), number of features)
+        - y_train, y_test : array of size len(query_indices), containing the label of each query point
+        - label_names : dictionary linking the class index label and the label name
 
     Attributes:
-        - cloud_tr, cloud_te, train_indices, test_indices, X_train, X_test : (as input)
-        - y_train, y_test : labels for the query_indices
+        - X_train, X_test, y_train, y_test, label_names : (as input)
 
     Methods :
         - random_forest : return a trained classifier
@@ -49,29 +47,72 @@ class classifier:
 
     """
 
-    def __init__(self, cloud_tr, train_indices, test_indices, X_train, X_test, test_cloud_diff=False, cloud_te=None):
+    def __init__(self, X_train, X_test, y_train, y_test, label_names):
 
-        self.cloud_tr = cloud_tr
-        if test_cloud_diff :
-            self.cloud_te = cloud_te
-        else :
-            self.cloud_te = cloud_tr
-        self.train_indices = train_indices
-        self.test_indices = test_indices
         self.X_train = X_train
         self.X_test = X_test
-        self.y_train = self.cloud_tr.labels[self.train_indices]
-        self.y_test = self.cloud_te.labels[self.test_indices]
+        self.y_train = y_train
+        self.y_test = y_test
+        self.label_names = label_names
 
     def random_forest(self):
         clf = RandomForestClassifier(random_state=0)
         clf.fit(self.X_train, self.y_train)
         return clf
 
-    def evaluate(self, clf):
+    def evaluate(self, clf, results_dir=None, filename="confusion_matrix.png"):
         y_pred = clf.predict(self.X_test)
         score = np.sum(y_pred == self.y_test)/len(self.y_test)
-        return y_pred, score
+
+        labels = list(self.label_names.keys())
+        considered_labels = [l for l in labels if l in self.y_test]
+
+        prop_M_confus = confusion_matrix(self.y_test, y_pred, labels=considered_labels, normalize="true")
+
+        # class statistics
+        recall = np.diag(prop_M_confus)
+        precision = np.diag(confusion_matrix(self.y_test, y_pred, labels=considered_labels, normalize="pred"))
+        F_measure = 2*recall*precision/(recall+precision)
+
+        # general statistics
+        R = np.mean(recall)
+        P = np.mean(precision)
+        F = 2*R*P/(R+P)
+
+        # plot the confusion matrix (normalized according with the expected predictions (ie : ground truth))
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(prop_M_confus, cmap='Reds', vmin=0, vmax=1)
+        fig.colorbar(cax)
+
+        names = [self.label_names[l] for l in considered_labels]
+        ticks = np.arange(0,len(names),1)
+        ax.set_xticks(ticks)
+        plt.xticks(rotation=90)
+        ax.set_yticks(ticks)
+
+        ax.set_xticklabels(names)
+        ax.set_yticklabels(names)
+
+        plt.tight_layout()
+        if results_dir is None :
+            plt.savefig(filename)
+        else :
+            plt.savefig(results_dir+"/"+filename)
+
+        # prepare output
+        measures = {
+        "accuracy":score,
+        "recall_by_class":recall,
+        "precision_by_class":precision,
+        "F_by_class":F_measure,
+        "mean_recall":R,
+        "mean_precision":P,
+        "global_F":F,
+        "considered_labels":considered_labels,
+        }
+
+        return y_pred, measures
 
     def get_classification_statistics(self, y_pred):
         """
@@ -80,7 +121,7 @@ class classifier:
         misclassified = {}
         confused = {}
         indices_misclassified = np.flatnonzero(self.y_test != y_pred)
-        for label in self.cloud_te.label_names.keys():
+        for label in self.label_names.keys():
             # count how many points were misclassified in this class
             if sum(self.y_test==label)==0:
                 misclassified[label] = 100.0
@@ -90,25 +131,21 @@ class classifier:
             # and the amount of this confusion
             lab_class = y_pred[np.flatnonzero(self.y_test==label)]
             lab_class = lab_class[lab_class != label]
-            count_class = np.array([np.sum(lab_class==lab) for lab in self.cloud_te.label_names.keys()])
+            count_class = np.array([np.sum(lab_class==lab) for lab in self.label_names.keys()])
             confused_class = np.argmax(count_class)
             if len(lab_class)==0:
                 confused[label] = ["", 0]
             else :
-                confused[label] = [self.cloud_te.label_names[confused_class], np.round(count_class[confused_class]/len(lab_class),2)*100]
+                confused[label] = [self.label_names[confused_class], np.round(count_class[confused_class]/len(lab_class),2)*100]
 
-        d_name = max([len(self.cloud_te.label_names[label]) for label in self.cloud_te.label_names.keys()])+2
-        #d1 = len(str(max([misclassified.get(label, 0) for label in self.label_names.keys()])))
-        d_pts = len(str(max([len(self.cloud_te.test_samples_indices.get(label, [])) for label in self.cloud_te.label_names.keys()])))
-
-        f = "   - class {0:<%d} : {1:>5}%% correctly classified, else mainly confused with {2:>%d} (proportion : {3:>5}%%) [{4:>%d} points]" % (d_name, d_name, d_pts)
+        d_name = max([len(self.label_names[label]) for label in self.label_names.keys()])+2
+        f = "   - class {0:<%d} : {1:>5}%% correctly classified, else mainly confused with {2:>%d} (proportion : {3:>5}%%)" % (d_name, d_name)
 
         print("\nMisclassification statistics :")
-        for label in self.cloud_te.label_names.keys():
+        for label in self.label_names.keys():
             print(f.format(
-                    "'"+self.cloud_te.label_names[label]+"'",
+                    "'"+self.label_names[label]+"'",
                     str(misclassified.get(label, 0))[:5],
                     "'"+str(confused.get(label,["",0])[0])+"'",
-                    str(confused.get(label,["",0])[1])[:5],
-                    len(self.cloud_te.test_samples_indices.get(label, []))))
+                    str(confused.get(label,["",0])[1])[:5]))
         print("")

@@ -144,10 +144,7 @@ class train_test_cloud(cloud):
         Basic class for a training point cloud, deriving from the cloud class. Takes:
             - cloud_path, label_path, save_dir, and save_file: see "cloud" class
             - load_if_possible : if True, loads the previously saved version if possible
-            - num_points_per_label_train : number of points to randomly sample per labeled class
-                                           for the train set. If it is "-1", all points are sampled.
-            - num_points_per_label_test : idem, but for the test set. If it is "-1",
-                                          all remaining points after the train sampling are sampled.
+
         Attributes :
             - train_samples_indices : dictionary linking labels to indices (in the cloud)
                                         of the randomly sampled points for the train set
@@ -169,7 +166,7 @@ class train_test_cloud(cloud):
 
             t0 = time.time()
 
-            # include labels since this is the train set
+            # include labels (for training and evaluation purposes)
             self.fetch_points(include_labels=True, file_type=cloud_path.split('.')[-1])
             self.train_samples_indices = {}
             self.test_samples_indices = {}
@@ -183,18 +180,13 @@ class train_test_cloud(cloud):
             Sample a fixed number of points per labeled class to:
                 1) limit computation time
                 2) avoid bias more common classes
+            This function produces a dictionary linking labels to indices (sampled points from the cloud).
 
             In :
                 - num_points_per_label : number of points to sample per label. If value is "-1",
                                          all (remaining) points are sampled.
-                - train : whether the sampling is performed for the train set.
                 - test : whether the sampling is for the test set
                          If True, points used for the train set are not samplable.
-
-            If both train and test are set to False, then this just samples some points.
-
-            Out :
-                - samples_indices : dictionary linking labels to indices (sampled points from the cloud)
         """
 
         # dictionary of sampled points
@@ -230,8 +222,6 @@ class train_test_cloud(cloud):
             self.train_samples_indices = samples_indices
         else:
             self.test_samples_indices = samples_indices
-
-        # return samples_indices
 
     def hand_sampled_points(self, samples_indices):
         """
