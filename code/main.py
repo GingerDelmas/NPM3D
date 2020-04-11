@@ -35,8 +35,8 @@ k_min = 10  # minimum neighborhood size considered
 k_max = 100  # maximum neighborhood size considered
 
 # pick one among 'k_dummy', 'k_critical_curvature',
-# 'k_min_shannon_entropy' and 'k_min_eigenentopy'
-k_chooser = 'k_critical_curvature'
+# 'k_min_shannon_entropy' and 'k_min_eigenentropy'
+k_chooser = 'k_min_eigenentropy'
 
 all_features = False # if False, use only relevant features
 
@@ -337,7 +337,9 @@ if __name__ == '__main__':
     print("# All trials statistics #")
     print("#########################")
 
-    print("\nFeatures always selected :", find_intersection(all_trials_selected_features))
+    print("\nFeatures selected at each trial :", find_intersection(all_trials_selected_features))
+    print("Features selected over the different trials :", list(set(sum(all_trials_selected_features, []))))
+    print("Mean number of feature per trial :", np.mean([len(tsf) for tsf in all_trials_selected_features]))
     print("Mean accuracy :", format_val(np.mean(all_trials_accuracy)), "%")
     print("Mean recall :", format_val(np.mean(all_trials_mean_recall)), "%")
     print("Mean precision :", format_val(np.mean(all_trials_mean_precision)), "%")

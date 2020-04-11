@@ -27,6 +27,11 @@ from utils import *
 from cloud_env import *
 
 ################################################################################
+# GLOBAL VARIABLES
+################################################################################
+eps = 10**(-8) #  to avoid errors when eigenvalues = 0 (denominator, log)
+
+################################################################################
 # CLASS DEFINITIONS
 ################################################################################
 
@@ -190,7 +195,7 @@ class neighborhood_finder(saveable):
             where li is the ith biggest eigenvalue of the structure tensor
         """
         # find the best k for each query
-        curvatures = self.eigs_to_test[...,2] / np.sum(self.eigs_to_test, axis=2)
+        curvatures = self.eigs_to_test[...,2] / (np.sum(self.eigs_to_test, axis=2) + eps)
         bestk = np.argmax(curvatures, axis=1)
 
         # deduce the outputs
@@ -207,10 +212,10 @@ class neighborhood_finder(saveable):
             where L, P and S are the linearity, planarity and sphericity
         """
         # find the best k for each query
-        L = (self.eigs_to_test[...,0] - self.eigs_to_test[...,1]) / self.eigs_to_test[...,0]
-        P = (self.eigs_to_test[...,1] - self.eigs_to_test[...,2]) / self.eigs_to_test[...,0]
-        S = self.eigs_to_test[...,2] / self.eigs_to_test[...,0]
-        entropy = - L * np.log(L) - P * np.log(P) - S * np.log(S)
+        L = (self.eigs_to_test[...,0] - self.eigs_to_test[...,1]) / (self.eigs_to_test[...,0] + eps)
+        P = (self.eigs_to_test[...,1] - self.eigs_to_test[...,2]) / (self.eigs_to_test[...,0] + eps)
+        S = self.eigs_to_test[...,2] / (self.eigs_to_test[...,0] + eps)
+        entropy = - L * np.log(L+eps) - P * np.log(P+eps) - S * np.log(S+eps)
         bestk = np.argmin(entropy, axis=1)
 
         # deduce the outputs
@@ -221,14 +226,14 @@ class neighborhood_finder(saveable):
         return neighborhoods_size, eigenvalues, normals
 
 
-    def k_min_eigenentopy(self):
+    def k_min_eigenentropy(self):
         """
             k minimizing the entropy El = - e1*ln(e1) - e2*ln(e2) - e2*ln(e2)
             where ei is the normalized ith biggest eigenvalue of the structure tensor
         """
 
         # find the best k for each query
-        entropy =  - np.sum(self.eigs_to_test * np.log(self.eigs_to_test), axis=2)
+        entropy =  - np.sum(self.eigs_to_test * np.log(self.eigs_to_test + eps), axis=2)
         bestk = np.argmin(entropy, axis=1)
 
         # deduce the outputs

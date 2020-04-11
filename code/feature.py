@@ -448,10 +448,21 @@ class features_finder(saveable):
             subset.append(j_max)
             relevance.append(r_max)
 
+        ### select the feature subset maximizing the relevance ...
+        # take = np.argmax(np.array(relevance))+1
+
+        # ... or such that the relevance high, before it (really) decreases
+        tol = 0.95 # keep features such that their relevance is at 'tol' from the maximum relevance
+        max_ind = np.argmax(relevance)
+        thresh = relevance[max_ind]*tol
+        end_ind = np.argmin(relevance[max_ind:]>thresh) # first index after the maximum where the relevance gets under tol% of the maximum relevance
+        take = max_ind+end_ind
+
         ### save the relevance convergence
         fig_relevance = plt.figure()
         ax = fig_relevance.add_subplot(111)
         plt.plot(relevance, "-o")
+        plt.plot(relevance[:take], "-ro")
 
         ax.set_xticks(list(range(len(subset))))
         plt.xticks(rotation=90)
@@ -462,9 +473,6 @@ class features_finder(saveable):
         plt.tight_layout()
         plt.savefig(results_dir+"/"+filename_rel)
         plt.close(fig_relevance)
-
-        ### select the feature subset maximizing the relevance
-        take = np.argmax(np.array(relevance))+1
 
         # proceed results
         if compute_specific:
