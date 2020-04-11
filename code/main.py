@@ -27,7 +27,7 @@ from classifier import *
 # GLOBAL VARIABLES
 ################################################################################
 
-num_trials = 10  # number of times the process is conducted (on a different random sample)
+num_trials = 3  # number of times the process is conducted (on a different random sample)
 
 num_points_train = 1000  # num points per label, per train file, per trial
 num_points_test = 3000  # num points per label, per test file, per trial
@@ -36,7 +36,7 @@ k_max = 100  # maximum neighborhood size considered
 
 # pick one among 'k_dummy', 'k_critical_curvature',
 # 'k_min_shannon_entropy' and 'k_min_eigenentropy'
-k_chooser = 'k_dummy'
+k_chooser = 'k_min_eigenentropy'
 
 all_features = False # if False, use only relevant features
 
@@ -44,7 +44,7 @@ all_features = False # if False, use only relevant features
 # PATHS
 ################################################################################
 
-data_dir = '../../NPM3D_local_files/data/Lille-Dijon'
+data_dir = '../../NPM3D_local_files/data/semantic-8/data'
 results_dir = '../../NPM3D_local_files/results'
 save_dir = '../../NPM3D_local_files/saves'
 
@@ -58,8 +58,8 @@ if __name__ == '__main__':
     files = [f for f in os.listdir(data_dir) if f.endswith(('.ply', '.txt'))]
 
     # select the desired files, keeping the selection in the form of a list
-    train_files = [files[2]]
-    test_files = [files[2]]
+    train_files = [files[0]]
+    test_files = [files[1]]
     print("Files chosen:", "\nTrain:", train_files, "\nTest:", test_files)
 
     # NOTE : the different files used here are required to share the same
@@ -102,7 +102,7 @@ if __name__ == '__main__':
 
             # case of semantic-8 files
             if file.endswith('.txt'):
-                label_path = data_dir + '/' + file.sub('.txt', '.labels')
+                label_path = data_dir + '/' + file.replace('.txt', '.labels')
             else:
                 label_path = None
 
@@ -185,10 +185,16 @@ if __name__ == '__main__':
             print("\nProcessing", file)
             cloud_path = data_dir + '/' + file
 
+            # case of semantic-8 files
+            if file.endswith('.txt'):
+                label_path = data_dir + '/' + file.replace('.txt', '.labels')
+            else:
+                label_path = None
+
             # create test cloud
             print('\nCollect and preprocess cloud')
             t0 = time.time()
-            cloud = train_test_cloud(cloud_path, save_dir)
+            cloud = train_test_cloud(cloud_path, save_dir, label_path=label_path)
             t1 = time.time()
             cloud.sample_n_points_per_label(num_points_test, seed=trial, test=True)  # sample a test set
             cloud.get_split_statistics()  # print the statistics on the samples
@@ -312,6 +318,7 @@ if __name__ == '__main__':
 
         if measures["accuracy"] > best_accuracy :
             best_accuracy = measures["accuracy"]
+            print("BEST : ", trial)
 
             for r in res_files :
                 if "best" not in r: # this will erase the previous "best" files (= update)

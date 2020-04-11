@@ -29,7 +29,7 @@ from cloud_env import *
 ################################################################################
 # GLOBAL VARIABLES
 ################################################################################
-eps = np.finfo(float).eps #  to avoid errors when eigenvalues = 0 (denominator, log)
+eps = 10**(-8) #np.finfo(float).eps #  to avoid errors when eigenvalues = 0 (denominator, log)
 
 ################################################################################
 # CLASS DEFINITIONS
@@ -52,7 +52,7 @@ class neighborhood_finder(saveable):
             - k_dummy()
             - k_critical_curvature()
             - k_min_shannon_entropy()
-            - k_min_eigenentopy()
+            - k_min_eigenentropy()
         should return:
 
         Out:
