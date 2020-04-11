@@ -140,7 +140,6 @@ class neighborhood_finder(saveable):
         for k in tqdm(range(k_min, k_max + 1)): # this includes calculus for k = k_max
             knns = self.cloud.tree.query(self.cloud.points[self.query_indices], k, return_distance=False)
             eigenvalues[:,k-k_min,:], normals[:,k-k_min,:] = self.local_PCA(knns)
-            # print('k = {}'.format(k))
 
         t1 = time.time()
         compute_time = t1 - t0
@@ -195,7 +194,7 @@ class neighborhood_finder(saveable):
             where li is the ith biggest eigenvalue of the structure tensor
         """
         # find the best k for each query
-        curvatures = self.eigs_to_test[...,2] / (np.sum(self.eigs_to_test, axis=2) + eps)
+        curvatures = self.eigs_to_test[...,0] / (np.sum(self.eigs_to_test, axis=2) + eps)
         bestk = np.argmax(curvatures, axis=1)
 
         # deduce the outputs
@@ -212,9 +211,10 @@ class neighborhood_finder(saveable):
             where L, P and S are the linearity, planarity and sphericity
         """
         # find the best k for each query
-        L = (self.eigs_to_test[...,0] - self.eigs_to_test[...,1]) / (self.eigs_to_test[...,0] + eps)
-        P = (self.eigs_to_test[...,1] - self.eigs_to_test[...,2]) / (self.eigs_to_test[...,0] + eps)
-        S = self.eigs_to_test[...,2] / (self.eigs_to_test[...,0] + eps)
+        L = (self.eigs_to_test[...,2] - self.eigs_to_test[...,1]) / (self.eigs_to_test[...,2] + eps)
+        P = (self.eigs_to_test[...,1] - self.eigs_to_test[...,0]) / (self.eigs_to_test[...,2] + eps)
+        S = self.eigs_to_test[...,0] / (self.eigs_to_test[...,2] + eps)
+
         entropy = - L * np.log(L+eps) - P * np.log(P+eps) - S * np.log(S+eps)
         bestk = np.argmin(entropy, axis=1)
 

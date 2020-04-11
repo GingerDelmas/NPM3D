@@ -27,6 +27,11 @@ from cloud_env import *
 from neighborhood import *
 
 ################################################################################
+# GLOBAL VARIABLES
+################################################################################
+eps = 10**(-8) #  to avoid errors when eigenvalues = 0 (denominator, log)
+
+################################################################################
 # CLASS DEFINITIONS
 ################################################################################
 
@@ -103,11 +108,6 @@ class features_finder(saveable):
             t1 = time.time()
             self.compute_time = t1 - t0
 
-        # # TODO
-        # plt.hist(neighborhoods_size, bins=np.max(neighborhoods_size)-np.min(neighborhoods_size))
-        # plt.savefig('../../NPM3D_local_files/results/hist.png')
-        # plt.close()
-
     def normalize_feature(self, y, name_ft=None, save_norm=None, use_norm=None, norm=None):
         """
         Normalize a feature vector y to map it into [0,1].
@@ -143,7 +143,6 @@ class features_finder(saveable):
                 - planarity
                 - sphericity
         """
-        eps = 10**(-5) # to avoid errors when eigenvalues = 0
         lbda1, lbda2, lbda3 = self.eigenvalues[:,2], self.eigenvalues[:,1], self.eigenvalues[:,0]
 
         linearity = 1 - lbda2 / (lbda1 + eps)
@@ -239,8 +238,6 @@ class features_finder(saveable):
                     - change of curvature
         """
 
-        eps = 10**(-8) # to avoid errors when eigenvalues = 0 (denominator, log)
-
         #### get the eigenvalues and normalize them
         e1, e2, e3 = self.eigenvalues[:,2], self.eigenvalues[:,1], self.eigenvalues[:,0]
 
@@ -290,7 +287,7 @@ class features_finder(saveable):
 
         ### other 3D shape features
 
-        omnivariance = (e1*e2*e3 + abs(np.min(e1*e2*e3)))**(1/3.)
+        omnivariance = (e1*e2*e3 + abs(np.min(e1*e2*e3)))**(1/3.) # add abs(np.min(e1*e2*e3)) to avoid casting errors complex -> float
         anisotropy = (e1 - e3) / (e1 + eps)
         eigenentropy = - e1*np.log(e1 + eps) - e2*np.log(e2 + eps) - e3*np.log(e3 + eps)
         summ = e1 + e2 + e3
