@@ -36,7 +36,7 @@ k_max = 100  # maximum neighborhood size considered
 
 # pick one among 'k_dummy', 'k_critical_curvature',
 # 'k_min_shannon_entropy' and 'k_min_eigenentropy'
-k_chooser = 'k_min_shannon_entropy'
+k_chooser = 'k_dummy'
 
 all_features = False # if False, use only relevant features
 
@@ -130,9 +130,10 @@ if __name__ == '__main__':
             print('Done in %.0f seconds' % (t2 - t0),
                   '(without load: %.0f seconds)' % (t2 - t1 + nf.compute_time))
 
-            plt.hist(ks, bins=np.max(ks)-np.min(ks))
-            plt.savefig(results_dir + "/hist.png")
-            plt.close()
+            if k_chooser != "k_dummy":
+                plt.hist(ks, bins=np.max(ks)-np.min(ks))
+                plt.savefig(results_dir + "/hist.png")
+                plt.close()
 
             # calculate features
             print("\nCompute features")

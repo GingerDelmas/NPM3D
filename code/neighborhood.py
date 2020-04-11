@@ -29,7 +29,7 @@ from cloud_env import *
 ################################################################################
 # GLOBAL VARIABLES
 ################################################################################
-eps = 10**(-8) #  to avoid errors when eigenvalues = 0 (denominator, log)
+eps = np.finfo(float).eps #  to avoid errors when eigenvalues = 0 (denominator, log)
 
 ################################################################################
 # CLASS DEFINITIONS
