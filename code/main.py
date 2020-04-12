@@ -44,7 +44,7 @@ all_features = False # if False, use only relevant features
 # PATHS
 ################################################################################
 
-data_dir = '../../NPM3D_local_files/data/semantic-8/data'
+data_dir = '../../NPM3D_local_files/data'
 results_dir = '../../NPM3D_local_files/results'
 save_dir = '../../NPM3D_local_files/saves'
 
@@ -66,6 +66,7 @@ if __name__ == '__main__':
     #        labeling system
 
     # keep statistics over the different trials
+    best_trial = 0
     best_accuracy = 0 # to keep only the output results of the best trial
     all_trials_accuracy = []
     all_trials_selected_features = []
@@ -318,7 +319,7 @@ if __name__ == '__main__':
 
         if measures["accuracy"] > best_accuracy :
             best_accuracy = measures["accuracy"]
-            print("BEST : ", trial)
+            best_trial = trial
 
             for r in res_files :
                 if "best" not in r: # this will erase the previous "best" files (= update)
@@ -357,6 +358,7 @@ if __name__ == '__main__':
     print("Mean precision :", format_val(np.mean(all_trials_mean_precision)), "%")
     print("Mean global F-measure :", format_val(np.mean(all_trials_global_F)), "%")
     print("Mean time computation :  %.0f seconds.\n" % np.mean(all_trials_computation_time))
+    print("Best trial : {}".format(best_trial))
 
     num_class = len(cloud.label_names)
     considered_labels = sum(all_trials_considered_labels, [])

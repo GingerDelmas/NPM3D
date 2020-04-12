@@ -233,7 +233,8 @@ class neighborhood_finder(saveable):
         """
 
         # find the best k for each query
-        entropy =  - np.sum(self.eigs_to_test * np.log(self.eigs_to_test + eps), axis=2)
+        normalized = self.eigs_to_test / np.sum(self.eigs_to_test, axis=2)[...,None]
+        entropy =  - np.sum(normalized * np.log(normalized + eps), axis=2)
         bestk = np.argmin(entropy, axis=1)
 
         # deduce the outputs

@@ -52,10 +52,6 @@ class features_finder(saveable):
                         and the right value of "k"
             - save_dir and save_file : see "saveable" class
 
-        Out: functions dedicated to a single feature return a 1D numpy array.
-            Those returning a collection of n different features return a
-            list with n elements, each being a numpy arrays of size len(query_indices)
-
         Methods returning a collection of features are:
             - features_dim()
             - features_2D()
